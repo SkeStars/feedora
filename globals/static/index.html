@@ -1,0 +1,3427 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feedora</title>
+  <meta name="description" content='Feedora，一个开源的RSS在线网页阅读器'>
+  <meta name="keywords" content="<< .Keywords >>">
+  <meta name="anthor" content="srcrs">
+  <meta name="theme-color" content="#f5f5f5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Feedora">
+  <link rel="apple-touch-icon" href="static/logo.svg">
+  <link rel="manifest" href="static/manifest.json">
+  <!-- <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css"> -->
+  <link rel="stylesheet" href="static/index.min.css">
+  << if .DarkMode>>
+    <link rel="stylesheet" href="static/dark-mode.css">
+    << end>>
+      <link rel="icon" href="static/logo.svg" type="image/svg+xml">
+      <style>
+        * {
+          -webkit-tap-highlight-color: transparent;
+          tap-highlight-color: transparent;
+        }
+
+        body {
+          font-family: "Avenir", Helvetica, Arial, sans-serif;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          text-align: center;
+          color: #2c3e50;
+          margin-top: 10px;
+          background-color: #f5f5f5;
+        }
+
+        h1 {
+          margin-top: 15px;
+          margin-bottom: 15px;
+        }
+
+        .card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 16px;
+          font-weight: normal;
+          padding: 10px 10px 10px 5px !important;
+        }
+
+        .card-header-left {
+          display: flex;
+          align-items: center;
+          flex: 1;
+        }
+
+        .card-header-right {
+          margin-left: 10px;
+          flex-shrink: 0;
+        }
+
+        .card-header-icon {
+          width: 20px;
+          height: 20px;
+          margin-right: 8px;
+          border-radius: 4px;
+          background-color: transparent;
+        }
+
+        .card-header-title {
+          font-weight: 500;
+          cursor: pointer;
+        }
+
+        .card-header-title:hover {
+          opacity: 0.7;
+        }
+
+        .time {
+          cursor: pointer;
+        }
+
+        .time:hover {
+          opacity: 0.7;
+        }
+
+        .list-item {
+          display: flex;
+          align-items: center;
+          text-align: left;
+          width: 100%;
+        }
+
+        .list-item-title {
+          display: flex;
+          align-items: flex-start;
+          text-align: left;
+          width: 100%;
+          margin-bottom: 6px;
+          line-height: 1.6;
+          padding-right: 10px;
+          box-sizing: border-box;
+        }
+
+        .number-wrapper {
+          display: flex;
+          margin-right: 8px;
+          flex-shrink: 0;
+          height: 1.2em;
+          align-items: center;
+          margin-top: 4px;
+        }
+
+        @media only screen and (min-width: 1200px) {
+          .number-wrapper {
+            margin-top: 1px;
+          }
+        }
+
+        .item-number {
+          width: 20px;
+          height: 20px;
+          min-width: 20px;
+          font-size: 12px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background-color: #e8e8e8;
+          border-radius: 6px;
+          color: #666;
+          line-height: 1;
+          box-sizing: border-box;
+          padding-top: 2px;
+        }
+
+        << if .DarkMode>>.item-number {
+          background-color: #3a3a3a;
+          color: #999;
+        }
+
+        << end>>.item-content {
+          flex: 1;
+          line-height: 1.6;
+          word-break: break-word;
+        }
+
+        .item-content a,
+        .item-content .el-link,
+        .item-content .el-link__inner {
+          display: inline !important;
+        }
+
+        .item-content .source-tag {
+          display: inline;
+        }
+
+        a {
+          color: black;
+          text-decoration: none;
+        }
+
+        a:hover {
+          text-decoration: none;
+        }
+
+        .el-link {
+          color: black !important;
+          text-decoration: none !important;
+        }
+
+        .el-link:hover {
+          text-decoration: none !important;
+        }
+
+        .el-link__inner {
+          text-decoration: none !important;
+          border-bottom: none !important;
+        }
+
+        /* 移除el-list-item的底部边框 */
+        .el-list-item {
+          border-bottom: none !important;
+        }
+
+        .feed-col {
+          margin-bottom: 20px;
+        }
+
+        .box-card {
+          border-radius: 12px;
+          transition: all 0.3s;
+          cursor: pointer;
+          border: 1px solid #e8e8e8;
+          -webkit-tap-highlight-color: transparent;
+          tap-highlight-color: transparent;
+        }
+
+        .el-card__header {
+          padding: 25px 0px 10px 0px !important;
+        }
+
+        .el-card__body {
+          padding: 0px 5px 0px 12px !important;
+        }
+
+        << if .DarkMode>>.box-card {
+          border-color: #3a3a3a;
+        }
+
+        << end>>.time {
+          font-size: 12px;
+          color: #999;
+        }
+
+        .source-tag {
+          font-size: 10px;
+          color: #909399;
+          display: inline;
+          vertical-align: middle;
+          margin-left: 0.6em;
+          position: relative;
+          top: -0.1px;
+        }
+
+        .pubdate-tag {
+          font-size: 10px;
+          color: #909399;
+          display: inline;
+          vertical-align: middle;
+          margin-left: 0.6em;
+          position: relative;
+          top: -0.1px;
+        }
+
+        /* Multiline optimization */
+        .is-multiline .source-tag,
+        .is-multiline .pubdate-tag {
+          top: -0.4px;
+        }
+
+        .footer-countdown {
+          font-size: 10px;
+          color: #999;
+          margin-left: 10px;
+        }
+
+        .refresh-all-link {
+          cursor: pointer;
+          transition: color 0.2s;
+        }
+
+        .refresh-all-link:hover {
+          color: #409eff;
+          text-decoration: underline;
+        }
+
+        .item-read {
+          opacity: 0.5;
+        }
+
+        .item-read a,
+        .item-read .el-link {
+          color: #999 !important;
+        }
+
+        << if .DarkMode>>.item-read a,
+        .item-read .el-link {
+          color: #666 !important;
+        }
+
+        << end>>
+
+        /* 修复移动端链接粗体问题 */
+        .el-link,
+        .el-link__inner {
+          font-weight: normal !important;
+        }
+
+        .item-content .el-link,
+        .item-content .el-link__inner {
+          font-weight: normal !important;
+        }
+
+        /* 列表条目 Hover 样式优化: 去除下划线，高亮文字 */
+        .list-item-title:hover .el-link,
+        .list-item-title:hover .el-link__inner {
+          color: #409EFF !important;
+          text-decoration: none !important;
+          border-bottom: none !important;
+        }
+
+        /* 强制移除 Element UI 可能添加的伪元素下划线 */
+        .el-link.el-link--default:after,
+        .list-item-title:hover .el-link::after {
+          display: none !important;
+          border-bottom: none !important;
+        }
+
+        /* 滚动容器样式 */
+        .scroll-container {
+          height: 300px;
+          overflow-y: auto;
+          overflow-x: hidden;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .scroll-container::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .scroll-container::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .scroll-container::-webkit-scrollbar-thumb {
+          background-color: transparent;
+          border-radius: 3px;
+        }
+
+        .scroll-container.scrolling::-webkit-scrollbar-thumb {
+          background-color: #c1c1c1;
+        }
+
+        .scroll-container.scrolling::-webkit-scrollbar-thumb:hover {
+          background-color: #a8a8a8;
+        }
+
+        /* Group Tabs Styles */
+        .group-tabs-container {
+          display: flex;
+          overflow-x: auto;
+          white-space: nowrap;
+          padding: 10px 0 20px 0;
+          margin-bottom: 10px;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          justify-content: center;
+        }
+
+        .group-tabs-container::-webkit-scrollbar {
+          display: none;
+        }
+
+        .group-tab {
+          display: inline-block;
+          padding: 8px 16px;
+          margin-right: 12px;
+          background-color: #f4f4f5;
+          border-radius: 20px;
+          cursor: pointer;
+          font-size: 14px;
+          color: #606266;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+          transition: all 0.3s;
+          border: 1px solid transparent;
+        }
+
+        .group-tab:hover {
+          color: #909399;
+        }
+
+        .group-tab.active {
+          background-color: #909399;
+          color: #fff;
+          box-shadow: 0 4px 8px rgba(144, 147, 153, 0.2);
+        }
+
+        << if .DarkMode>>.group-tab {
+          background-color: #2d2d2d;
+          color: #ccc;
+        }
+
+        .group-tab.active {
+          background-color: #909399;
+          color: #fff;
+        }
+
+        << end>>
+        /* 移动端右侧预留滑动空间，防止误触 */
+        @media only screen and (max-width: 767px) {
+
+
+          .scroll-container {}
+
+          .box-card .el-card__body {
+            position: relative;
+          }
+
+          .box-card .el-card__body::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 20px;
+            z-index: 10;
+          }
+        }
+
+        << if .DarkMode>>body {
+          background-color: #1a1a1a;
+          color: #e0e0e0;
+        }
+
+        #initial-loader {
+          background-color: #1a1a1a;
+        }
+
+        .scroll-container::-webkit-scrollbar-thumb {
+          background-color: transparent;
+        }
+
+        .scroll-container.scrolling::-webkit-scrollbar-thumb {
+          background-color: #4a4a4a;
+        }
+
+        .scroll-container.scrolling::-webkit-scrollbar-thumb:hover {
+          background-color: #5a5a5a;
+        }
+
+        /* 卡片背景和文字 */
+        .box-card {
+          background-color: #242424 !important;
+        }
+
+        .el-card {
+          background-color: #242424 !important;
+          --el-card-bg-color: #242424 !important;
+        }
+
+        .el-card__header {
+          border-bottom-color: #3a3a3a !important;
+        }
+
+        .card-header-title {
+          color: #e0e0e0;
+        }
+
+        .card-header-title:hover {
+          color: #409EFF;
+        }
+
+        /* 链接颜色 */
+        a {
+          color: #e0e0e0;
+        }
+
+        .el-link {
+          color: #e0e0e0 !important;
+        }
+
+        .el-link:hover {
+          color: #409EFF !important;
+        }
+
+        /* 列表条目 Hover 样式 */
+        .list-item-title:hover .el-link,
+        .list-item-title:hover .el-link__inner {
+          color: #409EFF !important;
+        }
+
+        /* 时间和标签颜色 */
+        .time {
+          color: #888;
+        }
+
+        .source-tag {
+          color: #777;
+        }
+
+        /* 提示文字 */
+        .tip {
+          color: #888 !important;
+        }
+
+        /* Footer 样式 */
+        .el-footer {
+          background-color: #1a1a1a;
+          color: #888;
+        }
+
+        .footer-countdown {
+          color: #888;
+        }
+
+        .refresh-all-link {
+          color: #888;
+        }
+
+        .refresh-all-link:hover {
+          color: #409EFF;
+        }
+
+        /* 对话框背景 */
+        .el-dialog {
+          background-color: #242424 !important;
+          --el-dialog-bg-color: #242424 !important;
+        }
+
+        .el-dialog__header {
+          background-color: #242424 !important;
+        }
+
+        .el-dialog__title {
+          color: #e0e0e0 !important;
+        }
+
+        .el-dialog__body {
+          background-color: #242424 !important;
+          color: #e0e0e0 !important;
+        }
+
+        .el-dialog__footer {
+          background-color: #242424 !important;
+        }
+
+        .el-dialog__headerbtn .el-dialog__close {
+          color: #888 !important;
+        }
+
+        .el-dialog__headerbtn:hover .el-dialog__close {
+          color: #409EFF !important;
+        }
+
+        /* 遮罩层 */
+        .el-overlay {
+          background-color: rgba(0, 0, 0, 0.7) !important;
+        }
+
+        /* Tab 标签页 */
+        .el-tabs__header {
+          background-color: transparent;
+        }
+
+        .el-tabs__nav-wrap::after {
+          background-color: #3a3a3a !important;
+        }
+
+        .el-tabs__item {
+          color: #999 !important;
+        }
+
+        .el-tabs__item.is-active {
+          color: #409EFF !important;
+        }
+
+        .el-tabs__item:hover {
+          color: #409EFF !important;
+        }
+
+        .el-tabs__active-bar {
+          background-color: #409EFF !important;
+        }
+
+        /* 表格样式 */
+        .el-table {
+          background-color: #242424 !important;
+          --el-table-bg-color: #242424 !important;
+          --el-table-tr-bg-color: #242424 !important;
+          --el-table-header-bg-color: #2d2d2d !important;
+          --el-table-row-hover-bg-color: #2d2d2d !important;
+          --el-table-border-color: #3a3a3a !important;
+          --el-table-text-color: #e0e0e0 !important;
+          --el-table-header-text-color: #e0e0e0 !important;
+        }
+
+        .el-table th.el-table__cell {
+          background-color: #2d2d2d !important;
+        }
+
+        .el-table tr {
+          background-color: #242424 !important;
+        }
+
+        .el-table--border .el-table__cell {
+          border-color: #3a3a3a !important;
+        }
+
+        .el-table__row:hover>td.el-table__cell {
+          background-color: #2d2d2d !important;
+        }
+
+        /* 表格固定列 */
+        .el-table__fixed,
+        .el-table__fixed-right {
+          background-color: #242424 !important;
+        }
+
+        .el-table__fixed-right-patch {
+          background-color: #2d2d2d !important;
+        }
+
+        .el-table__fixed .el-table__cell,
+        .el-table__fixed-right .el-table__cell {
+          background-color: #242424 !important;
+        }
+
+        .el-table__fixed th.el-table__cell,
+        .el-table__fixed-right th.el-table__cell {
+          background-color: #2d2d2d !important;
+        }
+
+        .el-table__fixed .el-table__row:hover>td.el-table__cell,
+        .el-table__fixed-right .el-table__row:hover>td.el-table__cell {
+          background-color: #2d2d2d !important;
+        }
+
+        /* 表格固定列阴影 */
+        .el-table__fixed-right::before,
+        .el-table__fixed::before {
+          background-color: transparent !important;
+        }
+
+        .el-table--scrollable-x .el-table__body-wrapper {
+          background-color: #242424 !important;
+        }
+
+        /* 表单元素 */
+        .el-input__wrapper {
+          background-color: #2d2d2d !important;
+          box-shadow: 0 0 0 1px #3a3a3a inset !important;
+        }
+
+        .el-input__wrapper:hover {
+          box-shadow: 0 0 0 1px #4a4a4a inset !important;
+        }
+
+        .el-input__wrapper.is-focus {
+          box-shadow: 0 0 0 1px #409EFF inset !important;
+        }
+
+        .el-input__inner {
+          color: #e0e0e0 !important;
+          background-color: transparent !important;
+        }
+
+        .el-input__inner::placeholder {
+          color: #666 !important;
+        }
+
+        .el-textarea__inner {
+          background-color: #2d2d2d !important;
+          color: #e0e0e0 !important;
+          box-shadow: 0 0 0 1px #3a3a3a inset !important;
+        }
+
+        .el-textarea__inner:hover {
+          box-shadow: 0 0 0 1px #4a4a4a inset !important;
+        }
+
+        .el-textarea__inner:focus {
+          box-shadow: 0 0 0 1px #409EFF inset !important;
+        }
+
+        /* 数字输入框 */
+        .el-input-number {
+          --el-input-bg-color: #2d2d2d;
+          --el-input-border-color: #3a3a3a;
+          --el-input-text-color: #e0e0e0;
+        }
+
+        .el-input-number__decrease,
+        .el-input-number__increase {
+          background-color: #2d2d2d !important;
+          border-color: #3a3a3a !important;
+          color: #e0e0e0 !important;
+        }
+
+        .el-input-number__decrease:hover,
+        .el-input-number__increase:hover {
+          color: #409EFF !important;
+        }
+
+        /* Select 选择器 */
+        .el-select {
+          --el-select-input-focus-border-color: #409EFF;
+        }
+
+        .el-select-dropdown {
+          background-color: #2d2d2d !important;
+          border-color: #3a3a3a !important;
+        }
+
+        .el-select-dropdown__item {
+          color: #e0e0e0 !important;
+        }
+
+        .el-select-dropdown__item.hover,
+        .el-select-dropdown__item:hover {
+          background-color: #3a3a3a !important;
+        }
+
+        .el-select-dropdown__item.selected {
+          color: #409EFF !important;
+        }
+
+        .el-select__tags {
+          background-color: transparent !important;
+        }
+
+        .el-tag {
+          background-color: #3a3a3a !important;
+          border-color: #4a4a4a !important;
+          color: #e0e0e0 !important;
+        }
+
+        .el-tag .el-tag__close {
+          color: #888 !important;
+        }
+
+        .el-tag .el-tag__close:hover {
+          background-color: #4a4a4a !important;
+          color: #e0e0e0 !important;
+        }
+
+        /* Switch 开关 */
+        .el-switch__core {
+          background-color: #4a4a4a !important;
+          border-color: #4a4a4a !important;
+        }
+
+        .el-switch.is-checked .el-switch__core {
+          background-color: #409EFF !important;
+          border-color: #409EFF !important;
+        }
+
+        /* Slider 滑块 */
+        .el-slider__runway {
+          background-color: #3a3a3a !important;
+        }
+
+        .el-slider__bar {
+          background-color: #409EFF !important;
+        }
+
+        .el-slider__button {
+          border-color: #409EFF !important;
+        }
+
+        /* Radio 单选按钮 */
+        .el-radio {
+          color: #e0e0e0 !important;
+        }
+
+        .el-radio__inner {
+          background-color: #2d2d2d !important;
+          border-color: #4a4a4a !important;
+        }
+
+        .el-radio__input.is-checked .el-radio__inner {
+          background-color: #409EFF !important;
+          border-color: #409EFF !important;
+        }
+
+        /* Checkbox 多选框 */
+        .el-checkbox {
+          color: #e0e0e0 !important;
+        }
+
+        .el-checkbox__inner {
+          background-color: #2d2d2d !important;
+          border-color: #4a4a4a !important;
+        }
+
+        .el-checkbox__input.is-checked .el-checkbox__inner {
+          background-color: #409EFF !important;
+          border-color: #409EFF !important;
+        }
+
+        /* Divider 分隔线 */
+        .el-divider {
+          border-color: #3a3a3a !important;
+        }
+
+        .el-divider__text {
+          background-color: #242424 !important;
+          color: #888 !important;
+        }
+
+        /* Form 表单 */
+        .el-form-item__label {
+          color: #e0e0e0 !important;
+        }
+
+        /* Button 按钮 */
+        .el-button {
+          background-color: #2d2d2d !important;
+          border-color: #4a4a4a !important;
+          color: #e0e0e0 !important;
+        }
+
+        .el-button:hover {
+          background-color: #3a3a3a !important;
+          border-color: #5a5a5a !important;
+          color: #409EFF !important;
+        }
+
+        .el-button.is-disabled,
+        .el-button.is-disabled:hover {
+          background-color: #252525 !important;
+          border-color: #3a3a3a !important;
+          color: #555 !important;
+        }
+
+        .el-button--default {
+          background-color: #2d2d2d !important;
+          border-color: #4a4a4a !important;
+          color: #e0e0e0 !important;
+        }
+
+        .el-button--default:hover {
+          background-color: #3a3a3a !important;
+          border-color: #5a5a5a !important;
+          color: #409EFF !important;
+        }
+
+        /* Primary 按钮 */
+        .el-button--primary {
+          background-color: #409EFF !important;
+          border-color: #409EFF !important;
+          color: #fff !important;
+        }
+
+        .el-button--primary:hover {
+          background-color: #66b1ff !important;
+          border-color: #66b1ff !important;
+          color: #fff !important;
+        }
+
+        /* Success 按钮 */
+        .el-button--success {
+          background-color: #67C23A !important;
+          border-color: #67C23A !important;
+          color: #fff !important;
+        }
+
+        .el-button--success:hover {
+          background-color: #85ce61 !important;
+          border-color: #85ce61 !important;
+          color: #fff !important;
+        }
+
+        /* Warning 按钮 */
+        .el-button--warning {
+          background-color: #E6A23C !important;
+          border-color: #E6A23C !important;
+          color: #fff !important;
+        }
+
+        .el-button--warning:hover {
+          background-color: #ebb563 !important;
+          border-color: #ebb563 !important;
+          color: #fff !important;
+        }
+
+        /* Danger 按钮 */
+        .el-button--danger {
+          background-color: #F56C6C !important;
+          border-color: #F56C6C !important;
+          color: #fff !important;
+        }
+
+        .el-button--danger:hover {
+          background-color: #f78989 !important;
+          border-color: #f78989 !important;
+          color: #fff !important;
+        }
+
+        /* Info 按钮 */
+        .el-button--info {
+          background-color: #909399 !important;
+          border-color: #909399 !important;
+          color: #fff !important;
+        }
+
+        .el-button--info:hover {
+          background-color: #a6a9ad !important;
+          border-color: #a6a9ad !important;
+          color: #fff !important;
+        }
+
+        .el-button--primary.is-plain {
+          background-color: rgba(64, 158, 255, 0.1) !important;
+          border-color: #409EFF !important;
+          color: #409EFF !important;
+        }
+
+        .el-button--primary.is-plain:hover {
+          background-color: #409EFF !important;
+          color: #fff !important;
+        }
+
+        .el-button--info.is-plain {
+          background-color: rgba(144, 147, 153, 0.1) !important;
+          border-color: #909399 !important;
+          color: #909399 !important;
+        }
+
+        .el-button--info.is-plain:hover {
+          background-color: #909399 !important;
+          color: #fff !important;
+        }
+
+        .el-button--warning.is-plain {
+          background-color: rgba(230, 162, 60, 0.1) !important;
+          border-color: #E6A23C !important;
+          color: #E6A23C !important;
+        }
+
+        .el-button--warning.is-plain:hover {
+          background-color: #E6A23C !important;
+          color: #fff !important;
+        }
+
+        .el-button--danger.is-plain {
+          background-color: rgba(245, 108, 108, 0.1) !important;
+          border-color: #F56C6C !important;
+          color: #F56C6C !important;
+        }
+
+        .el-button--danger.is-plain:hover {
+          background-color: #F56C6C !important;
+          color: #fff !important;
+        }
+
+        .el-button--success.is-plain {
+          background-color: rgba(103, 194, 58, 0.1) !important;
+          border-color: #67C23A !important;
+          color: #67C23A !important;
+        }
+
+        .el-button--success.is-plain:hover {
+          background-color: #67C23A !important;
+          color: #fff !important;
+        }
+
+        /* ButtonGroup */
+        .el-button-group .el-button--default {
+          border-color: #4a4a4a !important;
+          background-color: #2d2d2d !important;
+          color: #e0e0e0 !important;
+        }
+
+        .el-button-group .el-button--default:hover {
+          background-color: #3a3a3a !important;
+          border-color: #5a5a5a !important;
+          color: #409EFF !important;
+        }
+
+        .el-button-group .el-button--default.is-disabled {
+          background-color: #252525 !important;
+          border-color: #3a3a3a !important;
+          color: #555 !important;
+        }
+
+        /* 表格固定单元格 - Element Plus 新版 */
+        .el-table .el-table__cell.is-fixed,
+        .el-table .el-table__cell.is-fixed-right {
+          background-color: #242424 !important;
+        }
+
+        .el-table th.el-table__cell.is-fixed,
+        .el-table th.el-table__cell.is-fixed-right {
+          background-color: #2d2d2d !important;
+        }
+
+        .el-table__row:hover>.el-table__cell.is-fixed,
+        .el-table__row:hover>.el-table__cell.is-fixed-right {
+          background-color: #2d2d2d !important;
+        }
+
+        /* 表格单元格通用 */
+        .el-table td.el-table__cell {
+          background-color: #242424 !important;
+        }
+
+        /* 确认框和消息框 */
+        .el-message-box {
+          background-color: #242424 !important;
+          border-color: #3a3a3a !important;
+        }
+
+        .el-message-box__title {
+          color: #e0e0e0 !important;
+        }
+
+        .el-message-box__content {
+          color: #ccc !important;
+        }
+
+        .el-message-box__headerbtn .el-message-box__close {
+          color: #888 !important;
+        }
+
+        /* Loading */
+        .el-loading-mask {
+          background-color: rgba(26, 26, 26, 0.9) !important;
+        }
+
+        .el-loading-text {
+          color: #e0e0e0 !important;
+        }
+
+        /* 时间选择器 */
+        .el-time-panel {
+          background-color: #242424 !important;
+          border-color: #3a3a3a !important;
+        }
+
+        .el-time-spinner__item {
+          color: #e0e0e0 !important;
+        }
+
+        .el-time-spinner__item:hover:not(.is-disabled):not(.is-active) {
+          background-color: #2d2d2d !important;
+        }
+
+        .el-time-spinner__item.is-active:not(.is-disabled) {
+          color: #409EFF !important;
+        }
+
+        .el-time-panel__footer {
+          border-top-color: #3a3a3a !important;
+        }
+
+        .el-picker-panel {
+          background-color: #242424 !important;
+          border-color: #3a3a3a !important;
+        }
+
+        .el-picker-panel__footer {
+          background-color: #242424 !important;
+          border-top-color: #3a3a3a !important;
+        }
+
+        /* Dropdown */
+        .el-dropdown-menu {
+          background-color: #242424 !important;
+          border-color: #3a3a3a !important;
+        }
+
+        .el-dropdown-menu__item {
+          color: #e0e0e0 !important;
+        }
+
+        .el-dropdown-menu__item:hover {
+          background-color: #2d2d2d !important;
+          color: #409EFF !important;
+        }
+
+        /* 分组管理页提示文字 */
+        .groups-manager>div {
+          color: #888 !important;
+        }
+
+        << end>>@keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        #initial-loader {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-color: #f5f5f5;
+          z-index: 99999;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          transition: opacity 0.3s;
+        }
+
+        .loading-spinner {
+          width: 40px;
+          height: 40px;
+          border: 3px solid rgba(64, 158, 255, 0.3);
+          border-radius: 50%;
+          border-top-color: #409EFF;
+          animation: spin 0.8s ease-in-out infinite;
+        }
+
+        [v-cloak] {
+          display: none !important;
+        }
+
+        .settings-btn {
+          position: absolute;
+          top: 20px;
+          right: 20px;
+          z-index: 2000;
+          font-size: 24px;
+          cursor: pointer;
+          color: #909399;
+          transition: color 0.3s;
+        }
+
+        .settings-btn:hover {
+          color: #409EFF;
+        }
+
+        /* Feed Management Mobile Styles */
+        .mobile-feed-list {
+          display: flex;
+          flex-direction: column;
+          gap: 15px;
+          padding-bottom: 20px;
+        }
+
+        .mobile-feed-card {
+          background: white;
+          border-radius: 8px;
+          padding: 15px;
+          box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+          border: 1px solid #ebeef5;
+        }
+
+        .mobile-card-header {
+          font-weight: bold;
+          font-size: 16px;
+          margin-bottom: 12px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding-bottom: 10px;
+          border-bottom: 1px solid #f0f0f0;
+        }
+
+        .mobile-card-row {
+          display: flex;
+          margin-bottom: 8px;
+          font-size: 14px;
+          align-items: center;
+        }
+
+        .mobile-card-row label {
+          width: 50px;
+          color: #909399;
+          flex-shrink: 0;
+          font-weight: 500;
+        }
+
+        .mobile-card-value {
+          flex: 1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .mobile-card-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 15px;
+          justify-content: flex-end;
+          border-top: 1px solid #f0f0f0;
+          padding-top: 12px;
+        }
+
+        << if .DarkMode>>.mobile-feed-card {
+          background: #2d2d2d;
+          border-color: #3a3a3a;
+          color: #ccc;
+        }
+
+        .mobile-card-header {
+          border-bottom-color: #3a3a3a;
+          color: #e0e0e0;
+        }
+
+        .mobile-card-row label {
+          color: #888;
+        }
+
+        .mobile-card-value {
+          color: #ccc;
+        }
+
+        .mobile-card-actions {
+          border-top-color: #3a3a3a;
+        }
+
+        .mobile-delete-btn {
+          color: #888 !important;
+        }
+
+        .mobile-delete-btn:hover {
+          color: #F56C6C !important;
+        }
+
+        << end>>
+
+        /* Password Modal Styling - 简约灰色风格 */
+        /* 全局修复: 重置 Element Plus 按钮的默认左边距，防止垂直排列时偏移 */
+        .el-button+.el-button {
+          margin-left: 0 !important;
+        }
+
+        .password-dialog.el-dialog {
+          border-radius: 12px !important;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+          overflow: hidden !important;
+        }
+
+        .password-dialog .el-dialog__header {
+          padding: 24px 24px 0 !important;
+          background: #ffffff !important;
+          border-bottom: none !important;
+          border-radius: 12px 12px 0 0 !important;
+        }
+
+        .password-dialog .el-dialog__title {
+          font-weight: 500;
+          color: #1f2937;
+          font-size: 18px;
+          text-align: center;
+        }
+
+        .password-dialog .el-dialog__headerbtn {
+          top: 16px;
+          right: 16px;
+          width: 32px;
+          height: 32px;
+        }
+
+        .password-dialog .el-dialog__close {
+          color: #9ca3af;
+          font-size: 18px;
+        }
+
+        .password-dialog .el-dialog__close:hover {
+          color: #6b7280;
+        }
+
+        .password-dialog .el-dialog__body {
+          padding: 24px 24px 0 !important;
+        }
+
+        .password-icon-container {
+          text-align: center;
+          margin-bottom: 24px;
+        }
+
+        .password-icon {
+          width: 48px;
+          height: 48px;
+          margin: 0 auto;
+          background: #e5e7eb;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .password-icon svg {
+          width: 24px;
+          height: 24px;
+          color: #6b7280;
+        }
+
+        .password-input-wrapper {
+          margin-bottom: 20px;
+          width: 100%;
+        }
+
+        .password-input-wrapper .el-input {
+          width: 100% !important;
+        }
+
+        .password-input-wrapper .el-input__wrapper {
+          width: 100% !important;
+          box-sizing: border-box !important;
+          border-radius: 6px !important;
+          box-shadow: 0 0 0 1px #d1d5db inset !important;
+          padding: 1px 11px !important;
+        }
+
+        .password-input-wrapper .el-input__wrapper:hover {
+          box-shadow: 0 0 0 1px #9ca3af inset !important;
+        }
+
+        .password-input-wrapper .el-input__wrapper.is-focus {
+          box-shadow: 0 0 0 1px #6b7280 inset !important;
+        }
+
+        .password-input-wrapper .el-input__inner {
+          height: 38px !important;
+          font-size: 14px !important;
+        }
+
+        .password-dialog .el-dialog__footer {
+          padding: 16px 24px 24px !important;
+        }
+
+        .password-dialog .dialog-footer {
+          display: flex;
+          gap: 10px;
+          width: 100%;
+        }
+
+        .dialog-footer .el-button {
+          flex: 1;
+          border-radius: 6px;
+          height: 40px;
+          font-size: 14px;
+          font-weight: 400;
+          border: none;
+          margin-left: 0 !important;
+        }
+
+        .dialog-footer .el-button:first-child {
+          background: #f3f4f6;
+          color: #6b7280;
+        }
+
+        .dialog-footer .el-button:first-child:hover {
+          background: #e5e7eb;
+        }
+
+        .dialog-footer .el-button--primary {
+          background: #6b7280;
+          color: #ffffff;
+        }
+
+        .dialog-footer .el-button--primary:hover {
+          background: #4b5563;
+        }
+
+        /* Operation Column Styling */
+        .operation-container {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 5px;
+          justify-content: flex-start;
+          align-items: center;
+        }
+
+        .op-btn {
+          margin-left: 0 !important;
+          padding: 4px 8px;
+        }
+
+        /* Config Dialog Styling */
+        .el-dialog__wrapper .el-dialog {
+          border-radius: 8px;
+        }
+
+        .el-tabs__nav-wrap {
+          padding: 0 20px;
+        }
+
+        .el-button svg {
+          vertical-align: middle;
+        }
+
+        .el-form-item .tip {
+          font-size: 12px;
+          color: #909399;
+          margin-top: 5px;
+        }
+
+        /* Dark Mode Support */
+        << if .DarkMode>>.password-dialog.el-dialog {
+          background: #242424 !important;
+        }
+
+        .password-dialog .el-dialog__header {
+          background: #242424 !important;
+        }
+
+        .password-dialog .el-dialog__title {
+          color: #e0e0e0;
+        }
+
+        .password-dialog .el-dialog__close {
+          color: #888;
+        }
+
+        .password-dialog .el-dialog__close:hover {
+          color: #409EFF;
+        }
+
+        .password-icon {
+          background: #3a3a3a;
+        }
+
+        .password-icon svg {
+          color: #888;
+        }
+
+        .password-input-wrapper .el-input__wrapper {
+          background: #2d2d2d !important;
+          box-shadow: 0 0 0 1px #3a3a3a inset !important;
+        }
+
+        .password-input-wrapper .el-input__wrapper:hover {
+          box-shadow: 0 0 0 1px #4a4a4a inset !important;
+        }
+
+        .password-input-wrapper .el-input__inner {
+          color: #e0e0e0 !important;
+        }
+
+        .password-dialog .el-dialog__body {
+          background: #242424 !important;
+        }
+
+        .password-dialog .el-dialog__footer {
+          background: #242424 !important;
+        }
+
+        .dialog-footer .el-button:first-child {
+          background: #3a3a3a;
+          color: #ccc;
+          border-color: #4a4a4a;
+        }
+
+        .dialog-footer .el-button:first-child:hover {
+          background: #4a4a4a;
+          color: #e0e0e0;
+        }
+
+        .dialog-footer .el-button--primary {
+          background: #4a4a4a;
+          border-color: #5a5a5a;
+        }
+
+        .dialog-footer .el-button--primary:hover {
+          background: #5a5a5a;
+        }
+
+        <<end>>
+        /* Mobile Responsive */
+        @media only screen and (max-width: 767px) {
+
+          /* 针对身份验证对话框的遮罩层进行调整，防止键盘弹出时遮挡 */
+          .el-overlay.auth-modal-overlay {
+            display: flex !important;
+            justify-content: center !important;
+            align-items: flex-start !important;
+            width: 100vw !important;
+            left: 0 !important;
+          }
+
+          /* 解决 display: flex !important 导致遮罩层不消失的问题 */
+          .el-overlay.auth-modal-overlay[style*="display: none"] {
+            display: none !important;
+          }
+
+          .password-dialog.el-dialog {
+            width: 90% !important;
+            margin: 10vh auto 0 !important;
+            /* 水平居中 */
+            height: auto !important;
+            max-height: none !important;
+            flex: none !important;
+          }
+
+          .password-dialog .el-dialog__body {
+            padding-bottom: 0 !important;
+            flex: none !important;
+          }
+
+          .password-dialog .el-dialog__footer {
+            padding-bottom: 24px !important;
+          }
+
+          .password-icon-container {
+            margin-bottom: 12px !important;
+          }
+
+          .password-icon {
+            width: 48px !important;
+            height: 48px !important;
+          }
+
+          .password-icon svg {
+            width: 24px !important;
+            height: 24px !important;
+          }
+
+          .dialog-footer {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+
+          .dialog-footer .el-button {
+            width: 100%;
+            height: 44px !important;
+          }
+
+          .drag-handle-mobile,
+          .group-drag-handle,
+          .drag-handle {
+            touch-action: none;
+          }
+        }
+      </style>
+      <script>
+        // 同步预加载已读状态，避免页面渲染后的视觉跳变
+        (function () {
+          try {
+            var saved = localStorage.getItem('rss-read-items');
+            window.__preloadedReadItems = saved ? new Set(JSON.parse(saved)) : new Set();
+          } catch (e) {
+            window.__preloadedReadItems = new Set();
+          }
+        })();
+      </script>
+      <style>
+        /* 预加载的已读条目会通过 JS 添加此属性选择器匹配的样式 */
+        .seo-item[data-read="true"] {
+          opacity: 0.5;
+        }
+
+        .seo-item[data-read="true"] a,
+        .seo-item[data-read="true"] .el-link {
+          color: #999 !important;
+        }
+
+        << if .DarkMode>>.seo-item[data-read="true"] a,
+        .seo-item[data-read="true"] .el-link {
+          color: #666 !important;
+        }
+
+        << end>>
+      </style>
+</head>
+
+<body>
+  <div id="initial-loader">
+    <div class="loading-spinner"></div>
+  </div>
+  <div id="app" v-cloak>
+    <div class="settings-btn" @click="openSettings">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path
+          d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+        </path>
+      </svg>
+    </div>
+
+    <!-- Password Modal -->
+    <el-dialog title="身份验证" v-model="showPasswordModal" width="340px" center class="password-dialog"
+      :close-on-click-modal="false" @opened="onPasswordModalOpened" modal-class="auth-modal-overlay">
+      <div class="password-icon-container">
+        <div class="password-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+            <path
+              d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z" />
+          </svg>
+        </div>
+      </div>
+      <div class="password-input-wrapper">
+        <el-input v-model="passwordInput" ref="passwordInput" placeholder="请输入访问密码" show-password
+          @keyup.enter="checkPassword" size="default"></el-input>
+      </div>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="showPasswordModal = false">取消</el-button>
+          <el-button type="primary" @click="checkPassword" :disabled="!passwordInput">解锁</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- Config Modal -->
+    <el-dialog title="系统配置" v-model="showConfigModal" fullscreen :show-close="true">
+      <div v-if="config" :style="{ padding: isPc ? '20px' : '10px', maxWidth: '1200px', margin: '0 auto' }">
+        <el-tabs v-model="activeTab">
+          <!-- Feeds Tab -->
+          <el-tab-pane label="订阅源管理" name="feeds">
+            <div style="margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+              <el-button type="primary" @click="addFeed">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+                  style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;">
+                  <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                </svg>
+                添加订阅源
+              </el-button>
+              <el-button type="success" @click="addFolder">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+                  style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;">
+                  <path
+                    d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z" />
+                </svg>
+                添加文件夹
+              </el-button>
+            </div>
+
+            <!-- PC View -->
+            <el-table class="sources-table" v-if="isPc" :data="config.sources" style="width: 100%" row-key="_id" border
+              default-expand-all>
+              <el-table-column width="40">
+                <template #default>
+                  <div class="drag-handle" style="cursor: move; text-align: center; color: #909399;">
+                    ☰
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column prop="name" label="名称" width="200">
+                <template #default="scope">
+                  <el-input v-if="scope.row.editMode" v-model="scope.row.name" size="small"></el-input>
+                  <span v-else>{{ scope.row.name || (scope.row.urls ? '文件夹' : '未命名') }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="url" label="URL" min-width="300">
+                <template #default="scope">
+                  <el-input v-if="scope.row.editMode && !scope.row.urls" v-model="scope.row.url"
+                    size="small"></el-input>
+                  <span v-else>{{ scope.row.url }}</span>
+                  <div v-if="scope.row.urls">
+                    <el-tag size="mini" type="info">包含 {{ scope.row.urls.length }} 个源</el-tag>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column prop="group" label="分组" width="150">
+                <template #default="scope">
+                  <el-input v-if="scope.row.editMode" v-model="scope.row.group" size="small"
+                    placeholder="默认: 关注"></el-input>
+                  <span v-else>{{ scope.row.group || '关注' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="300" fixed="right">
+                <template #default="scope">
+                  <div class="operation-container">
+                    <el-button-group>
+                      <el-button type="default" size="small" class="op-btn" @click="moveSourceUp(scope.$index)"
+                        :disabled="scope.$index === 0" title="上移">↑</el-button>
+                      <el-button type="default" size="small" class="op-btn" @click="moveSourceDown(scope.$index)"
+                        :disabled="scope.$index === config.sources.length - 1" title="下移">↓</el-button>
+                    </el-button-group>
+
+                    <el-button v-if="!scope.row.editMode" type="primary" size="small" plain class="op-btn"
+                      @click="enableEdit(scope.row)">编辑</el-button>
+                    <el-button v-else type="success" size="small" class="op-btn"
+                      @click="saveEdit(scope.row)">保存</el-button>
+
+                    <el-button type="info" size="small" plain class="op-btn"
+                      @click="openFeedSettings(scope.row)">设置</el-button>
+
+                    <el-button v-if="scope.row.urls" type="warning" size="small" plain class="op-btn"
+                      @click="manageFolder(scope.row)">内容</el-button>
+
+                    <el-button type="danger" size="small" plain class="op-btn"
+                      @click="removeSource(scope.$index)">×</el-button>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <!-- Mobile View -->
+            <div v-else class="mobile-feed-list sources-list">
+              <div v-for="(item, index) in config.sources" :key="item._id" class="mobile-feed-card"
+                style="position: relative;">
+
+                <el-button type="text" size="medium" class="mobile-delete-btn" @click="removeSource(index)"
+                  style="position: absolute; right: 2px; top: 8px; z-index: 10; width: 32px; height: 32px; min-height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; color: #909399;">
+                  <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                    fill="currentColor">
+                    <path
+                      d="M764.288 214.592 512 466.88 259.712 214.592a31.936 31.936 0 0 0-45.12 45.12L466.752 512 214.528 764.224a31.936 31.936 0 1 0 45.12 45.184L512 557.184l252.288 252.288a31.936 31.936 0 0 0 45.12-45.12L557.12 512.064l252.288-252.352a31.936 31.936 0 1 0-45.12-45.184z">
+                    </path>
+                  </svg>
+                </el-button>
+
+                <div class="mobile-card-header" style="padding-right: 35px; justify-content: flex-start;">
+                  <div class="drag-handle-mobile"
+                    style="width: 24px; margin-right: 5px; cursor: move; color: #909399; font-size: 20px; text-align: center; flex-shrink: 0;">
+                    ☰
+                  </div>
+                  <span class="mobile-card-title"
+                    style="flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 5px;">
+                    <el-input v-if="item.editMode" v-model="item.name" size="small" placeholder="名称"></el-input>
+                    <span v-else>{{ item.name || (item.urls ? '文件夹' : '未命名') }}</span>
+                  </span>
+                  <el-tag size="mini" v-if="item.urls" style="flex-shrink: 0;">文件夹</el-tag>
+                </div>
+
+                <div class="mobile-card-row">
+                  <label>URL:</label>
+                  <div class="mobile-card-value">
+                    <el-input v-if="item.editMode && !item.urls" v-model="item.url" size="small"
+                      placeholder="URL"></el-input>
+                    <span v-else>{{ item.url }}</span>
+                    <div v-if="item.urls">
+                      <el-tag size="mini" type="info">包含 {{ item.urls.length }} 个源</el-tag>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mobile-card-row">
+                  <label>分组:</label>
+                  <div class="mobile-card-value">
+                    <el-input v-if="item.editMode" v-model="item.group" size="small" placeholder="默认: 关注"></el-input>
+                    <span v-else>{{ item.group || '关注' }}</span>
+                  </div>
+                </div>
+
+                <div class="mobile-card-actions">
+                  <el-button-group>
+                    <el-button size="mini" @click="moveSourceUp(index)" :disabled="index === 0">↑</el-button>
+                    <el-button size="mini" @click="moveSourceDown(index)"
+                      :disabled="index === config.sources.length - 1">↓</el-button>
+                  </el-button-group>
+
+                  <el-button v-if="!item.editMode" type="primary" size="mini" plain
+                    @click="enableEdit(item)">编辑</el-button>
+                  <el-button v-else type="success" size="mini" @click="saveEdit(item)">保存</el-button>
+
+                  <el-button type="info" size="mini" plain @click="openFeedSettings(item)">设置</el-button>
+
+                  <el-button v-if="item.urls" type="warning" size="mini" plain
+                    @click="manageFolder(item)">内容</el-button>
+
+                  <!-- Delete button moved to top-right -->
+                </div>
+              </div>
+            </div>
+          </el-tab-pane>
+
+          <!-- General Settings Tab -->
+          <el-tab-pane label="基础设置" name="general">
+            <el-form :label-position="isPc ? 'right' : 'top'" :label-width="isPc ? '120px' : 'auto'">
+              <el-form-item label="强制夜间模式">
+                <el-switch v-model="config.darkMode"></el-switch>
+                <div class="tip">开启后将始终使用深色主题</div>
+              </el-form-item>
+
+              <el-form-item label="自动夜间模式">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <el-time-picker v-model="nightStartTime" placeholder="开始时间" value-format="HH:mm:ss"
+                    style="flex: 1"></el-time-picker>
+                  <span>至</span>
+                  <el-time-picker v-model="nightEndTime" placeholder="结束时间" value-format="HH:mm:ss"
+                    style="flex: 1"></el-time-picker>
+                </div>
+                <div class="tip">在此时间段内将自动切换为深色主题</div>
+              </el-form-item>
+
+
+
+              <el-form-item label="设置密码">
+                <el-input v-model="config.password" show-password placeholder="留空则不设置密码"></el-input>
+              </el-form-item>
+
+              <el-form-item label="免密时长(小时)">
+                <el-input-number v-model="config.sessionDuration" :min="0" :max="720"></el-input-number>
+                <div class="tip">验证通过后，在此时间内无需再次输入密码（设为 0 则默认 24 小时）</div>
+              </el-form-item>
+
+              <el-divider content-position="left">抓取计划</el-divider>
+              <div style="margin-bottom: 20px;">
+                <el-table :data="config.schedules" border style="width: 100%" size="mini">
+                  <el-table-column label="开始时间" width="140">
+                    <template #default="scope">
+                      <el-time-picker v-model="scope.row.startTime" placeholder="开始" value-format="HH:mm:ss"
+                        style="width: 100%"></el-time-picker>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="结束时间" width="140">
+                    <template #default="scope">
+                      <el-time-picker v-model="scope.row.endTime" placeholder="结束" value-format="HH:mm:ss"
+                        style="width: 100%"></el-time-picker>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="基频(分)" width="100">
+                    <template #default="scope">
+                      <el-input-number v-model="scope.row.baseRefresh" :min="0" :max="1440" controls-position="right"
+                        style="width: 100%"></el-input-number>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="默认倍数" width="100">
+                    <template #default="scope">
+                      <el-input-number v-model="scope.row.defaultCount" :min="0" :max="100" controls-position="right"
+                        style="width: 100%"></el-input-number>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="操作">
+                    <template #default="scope">
+                      <el-button type="text" size="mini" @click="config.schedules.splice(scope.$index, 1)"
+                        style="color: #F56C6C">删除</el-button>
+                    </template>
+                  </el-table-column>
+                </el-table>
+                <el-button type="primary" plain size="small"
+                  @click="config.schedules.push({startTime: '00:00:00', endTime: '08:00:00', baseRefresh: 10, defaultCount: 6})"
+                  style="width: 100%; margin-top: 10px;">
+                  添加时段规则
+                </el-button>
+                <div class="tip" style="margin-top: 10px;">
+                  设定“基准频率 × 默认倍数”作为此时段的刷新间隔。若计算结果为 0 表示暂停更新。<br />
+                  规则按顺序从上往下匹配，第一个匹配当前时间的规则生效。<br />
+                  <strong>如果当前时间不匹配任何规则，将不会进行自动刷新。</strong>
+                </div>
+              </div>
+
+            </el-form>
+          </el-tab-pane>
+
+          <!-- AI Filter Tab -->
+          <el-tab-pane label="AI 过滤" name="ai">
+            <el-form :label-position="isPc ? 'right' : 'top'" :label-width="isPc ? '120px' : 'auto'">
+              <el-form-item label="启用 AI 过滤">
+                <el-switch v-model="config.aiFilter.enabled"></el-switch>
+              </el-form-item>
+              <template v-if="config.aiFilter.enabled">
+                <el-form-item label="API Key">
+                  <el-input v-model="config.aiFilter.apiKey" show-password></el-input>
+                </el-form-item>
+                <el-form-item label="API Base">
+                  <el-input v-model="config.aiFilter.apiBase"
+                    placeholder="默认: https://ark.cn-beijing.volces.com/api/v3"></el-input>
+                </el-form-item>
+                <el-form-item label="模型">
+                  <el-input v-model="config.aiFilter.model" placeholder="默认: doubao-seed-1.8"></el-input>
+                </el-form-item>
+                <el-form-item label="阈值 (0-1)">
+                  <el-slider v-model="config.aiFilter.threshold" :min="0" :max="1" :step="0.05" show-input></el-slider>
+                  <div class="tip">置信度高于此值将被过滤</div>
+                </el-form-item>
+                <el-form-item label="系统提示词">
+                  <el-input type="textarea" :rows="4" v-model="config.aiFilter.systemPrompt"></el-input>
+                </el-form-item>
+              </template>
+            </el-form>
+          </el-tab-pane>
+
+          <!-- Group Management Tab -->
+          <el-tab-pane label="分组管理" name="groups">
+            <div class="groups-manager" :style="{ padding: isPc ? '0' : '10px' }">
+              <div style="margin-bottom: 10px; color: #666; font-size: 14px;">
+                拖动调整分组顺序，选中单选框设置默认展示分组。
+              </div>
+              <el-table :data="editingGroups" row-key="name" class="groups-table" border
+                style="width: 100%; max-width: 600px; margin: 0 auto;">
+                <el-table-column width="50" align="center">
+                  <template #default>
+                    <div class="group-drag-handle" style="cursor: move; color: #909399;">
+                      ☰
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column label="分组名称" prop="name">
+                  <template #default="scope">
+                    {{ scope.row.name }}
+                    <span v-if="scope.row.name === '关注'" style="font-size: 12px; color: #999;">(系统默认)</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="默认展示" width="100" align="center">
+                  <template #default="scope">
+                    <el-radio v-model="config.defaultGroup" :label="scope.row.name">&nbsp;</el-radio>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="showConfigModal = false" style="margin-right: 15px;">关闭</el-button>
+        <el-button type="primary" @click="saveConfig">保存并应用</el-button>
+      </span>
+
+      <!-- Folder Management Dialog -->
+      <el-dialog title="文件夹内容管理" v-model="showFolderModal" :width="isPc ? '600px' : '95%'" append-to-body>
+        <div v-if="currentFolder">
+          <el-button type="primary" size="small" @click="addFeedToFolder" style="margin-bottom: 10px;">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+              style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;">
+              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+            </svg>
+            添加源
+          </el-button>
+
+          <!-- PC Table -->
+          <el-table class="folder-table" v-if="isPc" :data="currentFolder.urls" border row-key="url">
+            <el-table-column width="40">
+              <template #default>
+                <div class="drag-handle" style="cursor: move; text-align: center; color: #909399;">
+                  ☰
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="name" label="名称">
+              <template #default="scope">
+                <el-input v-if="scope.row.editMode" v-model="scope.row.name" size="small"></el-input>
+                <span v-else>{{ scope.row.name }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="url" label="URL">
+              <template #default="scope">
+                <el-input v-if="scope.row.editMode" v-model="scope.row.url" size="small"></el-input>
+                <span v-else>{{ scope.row.url }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="240">
+              <template #default="scope">
+                <div class="operation-container">
+                  <el-button-group>
+                    <el-button type="default" size="small" class="op-btn" @click="moveFeedInFolderUp(scope.$index)"
+                      :disabled="scope.$index === 0" title="上移">↑</el-button>
+                    <el-button type="default" size="small" class="op-btn" @click="moveFeedInFolderDown(scope.$index)"
+                      :disabled="scope.$index === currentFolder.urls.length - 1" title="下移">↓</el-button>
+                  </el-button-group>
+
+                  <el-button v-if="!scope.row.editMode" type="primary" size="small" plain class="op-btn"
+                    @click="enableEdit(scope.row)">编辑</el-button>
+                  <el-button v-else type="success" size="small" class="op-btn"
+                    @click="saveEdit(scope.row)">保存</el-button>
+
+                  <el-button type="info" size="small" plain class="op-btn"
+                    @click="openFeedSettings(scope.row)">设置</el-button>
+
+                  <el-button type="danger" size="small" plain class="op-btn"
+                    @click="removeFeedFromFolder(scope.$index)">×</el-button>
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <!-- Mobile List -->
+          <div v-else class="mobile-feed-list folder-list">
+            <div v-for="(item, index) in currentFolder.urls" :key="index" class="mobile-feed-card"
+              style="position: relative;">
+
+              <el-button type="text" size="medium" class="mobile-delete-btn" @click="removeFeedFromFolder(index)"
+                style="position: absolute; right: 2px; top: 8px; z-index: 10; width: 32px; height: 32px; min-height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; color: #909399;">
+                <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                  fill="currentColor">
+                  <path
+                    d="M764.288 214.592 512 466.88 259.712 214.592a31.936 31.936 0 0 0-45.12 45.12L466.752 512 214.528 764.224a31.936 31.936 0 1 0 45.12 45.184L512 557.184l252.288 252.288a31.936 31.936 0 0 0 45.12-45.12L557.12 512.064l252.288-252.352a31.936 31.936 0 1 0-45.12-45.184z">
+                  </path>
+                </svg>
+              </el-button>
+
+              <div class="mobile-card-header" style="padding-right: 35px; justify-content: flex-start;">
+                <div class="drag-handle-mobile"
+                  style="width: 24px; margin-right: 5px; cursor: move; color: #909399; font-size: 20px; text-align: center; flex-shrink: 0;">
+                  ☰
+                </div>
+                <div class="mobile-card-title"
+                  style="flex:1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 5px;">
+                  <el-input v-if="item.editMode" v-model="item.name" size="small" placeholder="名称"></el-input>
+                  <span v-else>{{ item.name }}</span>
+                </div>
+              </div>
+
+              <div class="mobile-card-row">
+                <label>URL:</label>
+                <div class="mobile-card-value">
+                  <el-input v-if="item.editMode" v-model="item.url" size="small" placeholder="URL"></el-input>
+                  <span v-else>{{ item.url }}</span>
+                </div>
+              </div>
+
+              <div class="mobile-card-actions">
+                <el-button-group>
+                  <el-button size="mini" @click="moveFeedInFolderUp(index)" :disabled="index === 0">↑</el-button>
+                  <el-button size="mini" @click="moveFeedInFolderDown(index)"
+                    :disabled="index === currentFolder.urls.length - 1">↓</el-button>
+                </el-button-group>
+
+                <el-button v-if="!item.editMode" type="primary" size="mini" plain
+                  @click="enableEdit(item)">编辑</el-button>
+                <el-button v-else type="success" size="mini" @click="saveEdit(item)">保存</el-button>
+
+                <el-button type="info" size="mini" plain @click="openFeedSettings(item)">设置</el-button>
+
+                <!-- Delete button moved to top right -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </el-dialog>
+    </el-dialog>
+
+    <!-- Feed Settings Modal -->
+    <el-dialog title="源高级设置" v-model="showFeedSettingsModal" :width="isPc ? '600px' : '95%'" append-to-body>
+      <div v-if="currentEditingFeed">
+        <el-form :label-position="isPc ? 'right' : 'top'" :label-width="isPc ? '120px' : 'auto'">
+          <el-form-item label="图标 URL">
+            <el-input v-model="currentEditingFeed.icon" placeholder="https://..."></el-input>
+          </el-form-item>
+
+          <el-form-item label="显示发布时间">
+            <el-switch v-model="currentEditingFeed.showPubDate"></el-switch>
+            <div class="tip">在条目标题后显示发布时间（如"1小时前"）</div>
+          </el-form-item>
+
+          <template v-if="currentEditingFeed.url">
+            <el-divider content-position="left">条目限制</el-divider>
+
+            <el-form-item label="刷新倍数">
+              <el-input-number v-model="currentEditingFeed.refreshCount" :min="0" :max="100"
+                placeholder="0"></el-input-number>
+              <div class="tip">最终刷新间隔 = 基准频率 × 此倍数 (0为默认)</div>
+            </el-form-item>
+
+            <el-form-item label="最大读取条数">
+              <el-input-number v-model="currentEditingFeed.maxItems" :min="0" :max="500"
+                placeholder="0"></el-input-number>
+              <div class="tip">限制从RSS源读取的最大条目数 (0表示不限制)</div>
+            </el-form-item>
+
+            <el-form-item label="忽略原始时间">
+              <el-switch v-model="currentEditingFeed.ignoreOriginalPubDate"></el-switch>
+              <div class="tip">忽略RSS源自带的发布时间，使用首次出现时间代替</div>
+            </el-form-item>
+
+            <el-form-item label="缓存条数">
+              <el-input-number v-model="currentEditingFeed.cacheItems" :min="0" :max="500"
+                placeholder="0"></el-input-number>
+              <div class="tip">保留旧条目使总数达到此值 (0表示默认)</div>
+            </el-form-item>
+
+            <el-divider content-position="left">规则过滤</el-divider>
+
+            <el-form-item label="启用关键词过滤">
+              <el-switch v-model="tempKeywordFilterEnabled"></el-switch>
+              <div class="tip">基于关键词进行文章过滤</div>
+            </el-form-item>
+
+            <template v-if="tempKeywordFilterEnabled">
+              <el-form-item label="白名单模式">
+                <el-switch v-model="tempFilterSettings.whitelistMode"></el-switch>
+                <div class="tip">启用后仅保留包含保留关键词的文章，其他全部过滤</div>
+              </el-form-item>
+
+              <el-form-item v-if="!tempFilterSettings.whitelistMode" label="过滤关键词">
+                <el-select v-model="tempFilterSettings.filterKeywords" multiple filterable allow-create
+                  default-first-option placeholder="输入关键词并回车">
+                </el-select>
+                <div class="tip">包含这些词的文章将被过滤（黑名单）</div>
+              </el-form-item>
+
+              <el-form-item label="保留关键词">
+                <el-select v-model="tempFilterSettings.keepKeywords" multiple filterable allow-create default-first-option
+                  placeholder="输入关键词并回车">
+                </el-select>
+                <div class="tip" v-if="tempFilterSettings.whitelistMode">白名单模式：仅包含这些词的文章会被保留</div>
+                <div class="tip" v-else>包含这些词的文章将被保留(优先级最高)</div>
+              </el-form-item>
+
+              <el-form-item>
+                <el-button type="warning" size="small" :loading="clearingCache === 'keyword'"
+                  @click="clearCacheAndRefresh('filter')">
+                  <svg v-if="clearingCache !== 'keyword'" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
+                    fill="currentColor" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;">
+                    <path
+                      d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                  </svg>
+                  重新过滤
+                </el-button>
+              </el-form-item>
+            </template>
+
+            <el-form-item label="启用脚本过滤">
+              <el-switch v-model="tempScriptFilterEnabled"></el-switch>
+              <div class="tip">使用脚本规则进行高级过滤（如去重）</div>
+            </el-form-item>
+
+            <template v-if="tempScriptFilterEnabled">
+              <el-form-item label="脚本规则">
+                <el-input type="textarea" :rows="6" v-model="tempFilterSettings.scriptFilterContent"
+                  placeholder="#!/bin/bash&#10;# 从stdin读取所有条目的JSON数组，输出过滤后的JSON数组&#10;input=$(cat)&#10;# 使用jq处理，示例：保留发布时间一致的第一条&#10;echo &quot;$input&quot; | jq '[group_by(.pubDate) | .[] | .[0]]'"></el-input>
+                <div class="tip">Bash脚本，通过stdin接收JSON数组，输出过滤后的JSON数组。<el-link type="primary" @click="showScriptHelp = !showScriptHelp" style="margin-left: 5px;">{{ showScriptHelp ? '收起' : '查看' }}示例</el-link></div>
+                <el-collapse-transition>
+                  <div v-show="showScriptHelp" style="margin-top: 10px; padding: 10px; background: #f5f7fa; border-radius: 4px; font-size: 12px;">
+                    <div><strong>条目结构:</strong> <code style="font-size: 11px;">{"title":"标题","link":"链接","pubDate":"时间","source":"来源","description":"描述"}</code></div>
+                    <div style="margin-top: 8px;"><strong>常用示例：</strong></div>
+                    <div style="line-height: 1.8;">
+                      • 保留发布时间相同的第一条: <code style="font-size: 11px;">jq '[group_by(.pubDate) | .[] | .[0]]'</code><br>
+                      • 保留标题相同的第一条: <code style="font-size: 11px;">jq '[group_by(.title) | .[] | .[0]]'</code><br>
+                      • 限制前20条: <code style="font-size: 11px;">jq '.[:20]'</code><br>
+                      • 过滤包含关键词: <code style="font-size: 11px;">jq '[.[] | select(.title | contains("关键词"))]'</code><br>
+                      • 组合使用: <code style="font-size: 11px;">jq '[group_by(.pubDate) | .[] | .[0]] | .[:20]'</code>
+                    </div>
+                  </div>
+                </el-collapse-transition>
+              </el-form-item>
+
+              <el-form-item>
+                <el-button type="warning" size="small" :loading="clearingCache === 'script'"
+                  @click="clearCacheAndRefresh('filter')">
+                  <svg v-if="clearingCache !== 'script'" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
+                    fill="currentColor" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;">
+                    <path
+                      d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                  </svg>
+                  重新过滤
+                </el-button>
+              </el-form-item>
+            </template>
+
+            <el-divider content-position="left">AI 过滤</el-divider>
+
+            <el-form-item label="启用AI过滤">
+              <el-switch v-model="tempAIFilterEnabled"></el-switch>
+              <div class="tip">需要先在基础设置中启用全局AI过滤并配置API</div>
+            </el-form-item>
+
+            <template v-if="tempAIFilterEnabled">
+              <el-form-item label="自定义阈值">
+                <el-slider v-model="tempFilterSettings.threshold" :min="0" :max="1" :step="0.05" show-input></el-slider>
+                <div class="tip">置信度高于此值将被过滤 (0表示跟随全局)</div>
+              </el-form-item>
+
+              <el-form-item label="自定义提示词">
+                <el-input type="textarea" :rows="3" v-model="tempFilterSettings.customPrompt"
+                  placeholder="留空则使用全局提示词"></el-input>
+              </el-form-item>
+
+              <el-form-item>
+                <el-button type="warning" size="small" :loading="clearingCache === 'ai'"
+                  @click="clearCacheAndRefresh('filter')">
+                  <svg v-if="clearingCache !== 'ai'" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
+                    fill="currentColor" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;">
+                    <path
+                      d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                  </svg>
+                  重新过滤
+                </button>
+              </el-form-item>
+            </template>
+
+            <el-divider content-position="left">后处理</el-divider>
+
+            <el-form-item label="启用后处理">
+              <el-switch v-model="tempPostProcessEnabled"></el-switch>
+              <div class="tip">在AI过滤后对条目进行二次处理</div>
+            </el-form-item>
+
+            <template v-if="tempPostProcessEnabled">
+              <el-form-item label="处理模式">
+                <el-radio-group v-model="tempPostProcessSettings.mode">
+                  <el-radio label="ai">AI处理</el-radio>
+                  <el-radio label="script">脚本处理</el-radio>
+                </el-radio-group>
+              </el-form-item>
+
+              <el-form-item v-if="tempPostProcessSettings.mode === 'ai'" label="处理提示词">
+                <el-input type="textarea" :rows="3" v-model="tempPostProcessSettings.prompt"
+                  placeholder="请对以下RSS条目进行处理，返回JSON格式..."></el-input>
+              </el-form-item>
+
+              <el-form-item v-if="tempPostProcessSettings.mode === 'script'" label="脚本内容">
+                <el-input type="textarea" :rows="6" v-model="tempPostProcessSettings.scriptContent"
+                  placeholder="#!/bin/bash&#10;# 读取JSON输入&#10;input=$(cat)&#10;title=$(echo $input | jq -r '.title')&#10;# 输出JSON结果&#10;echo '{&quot;title&quot;: &quot;'$title'&quot;}'"></el-input>
+                <div class="tip">Bash脚本，通过stdin接收JSON，输出JSON结果。需要jq工具。</div>
+              </el-form-item>
+
+              <el-form-item label="修改字段">
+                <el-checkbox v-model="tempPostProcessSettings.modifyTitle">标题</el-checkbox>
+                <el-checkbox v-model="tempPostProcessSettings.modifyLink">链接</el-checkbox>
+                <el-checkbox v-model="tempPostProcessSettings.modifyPubDate">发布时间</el-checkbox>
+              </el-form-item>
+
+              <el-form-item>
+                <el-button type="warning" size="small" :loading="clearingCache === 'postprocess'"
+                  @click="clearCacheAndRefresh('postprocess')">
+                  <svg v-if="clearingCache !== 'postprocess'" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
+                    fill="currentColor" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;">
+                    <path
+                      d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                  </svg>
+                  重新处理
+                </button>
+              </el-form-item>
+            </template>
+          </template>
+        </el-form>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="showFeedSettingsModal = false" style="margin-right: 15px;">取消</el-button>
+        <el-button type="primary" @click="saveFeedSettings">确定</el-button>
+      </span>
+    </el-dialog>
+
+    <el-container>
+
+      <el-main v-loading.fullscreen.lock="fullscreenLoading" element-loading-text="拼命加载中" @touchstart="handleTouchStart"
+        @touchend="handleTouchEnd">
+        <!-- 分组切换 -->
+        <div class="group-tabs-container">
+          <div v-for="group in groups" :key="group" class="group-tab" :class="{ active: currentGroup === group }"
+            @click="selectGroup(group)">
+            {{ group }}
+          </div>
+        </div>
+        <el-row :gutter="20">
+          << range $index, $feed :=.RssDataList>>
+            <el-col v-if="showSEOFlag && currentGroup === '<< if $feed.Group >><< $feed.Group >><< else >>关注<< end >>'"
+              :xs="24" :sm="12" :md="8" :lg="6" :key="index" class="feed-col">
+              <el-card class="box-card" :body-style="{padding: '0 20px 12px 20px'}"
+                :header-style="{padding: '24px 20px 16px 20px'}">
+                <div slot="header" class="card-header">
+                  <div class="card-header-left">
+                    <img class="card-header-icon"
+                      src="<< if $feed.Icon >><< $feed.Icon >><<else>>static/favicon.svg<<end>>" alt="icon"
+                      onerror="this.src='static/favicon.svg'" />
+                    <span class="card-header-title" onclick="window.open('<< $feed.Link >>', '_blank')">
+                      << $feed.Title>>
+                    </span>
+                  </div>
+                  <div class="card-header-right">
+                    <time class="time" data-time="<< $feed.Custom.lastupdate >>" onclick="location.reload()">
+                      << $feed.Custom.lastupdate>>
+                    </time>
+                  </div>
+                </div>
+                <div class="scroll-container" @scroll="handleScroll">
+                  << range $i, $item :=$feed.Items>>
+                    <el-list key="<< $i >>">
+                      <el-list-item>
+                        <div class="list-item-title seo-item" data-link="<< $item.Link >>">
+                          <div class="number-wrapper">
+                            <span class="item-number">
+                              << inc $i>>
+                            </span>
+                          </div>
+                          <span class="item-content"><el-link href="<< $item.Link >>" target="_blank">
+                              << $item.Title>>
+                            </el-link>
+                            <<if $feed.ShowPubDate>>
+                              <<if and $feed.IsFolder $item.Source (ne $item.Source "" )>>
+                                <span class="pubdate-tag" data-pubdate="<< $item.PubDate >>"></span>
+                                <span class="source-tag"><< $item.Source>></span>
+                              <<else>>
+                                <span class="pubdate-tag" data-pubdate="<< $item.PubDate >>"></span>
+                              <<end>>
+                            <<else>>
+                              <<if and $feed.IsFolder $item.Source (ne $item.Source "" )>> <span class="source-tag">
+                                  << $item.Source>>
+                                </span>
+                              <<end>>
+                            <<end>>
+                          </span>
+                        </div>
+                      </el-list-item>
+                    </el-list>
+                    << end>>
+                </div>
+              </el-card>
+            </el-col>
+            << end>>
+              <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="(feed, index) in filteredFeeds" :key="index"
+                class="feed-col">
+                <el-card class="box-card" :body-style="{padding: '0 20px 12px 20px'}"
+                  :header-style="{padding: '24px 20px 16px 20px'}">
+                  <div slot="header" class="card-header">
+                    <div class="card-header-left">
+                      <img class="card-header-icon" :src="feed.icon || 'static/favicon.svg'" :alt="feed.title" @click="openFeedLink(feed.link)" style="cursor: pointer;" />
+                      <span class="card-header-title" @click="togglePubDate(feed)">{{ feed.title }}</span>
+                    </div>
+                    <div class="card-header-right">
+                      <time class="time" @click.stop="refreshFeed(feed)">{{ timeAgo(feed.custom.lastupdate) }}</time>
+                    </div>
+                  </div>
+                  <div class="scroll-container" @scroll="handleScroll">
+                    <el-list v-for="(item, i) in feed.items" :key="i">
+                      <el-list-item>
+                        <div class="list-item-title" :class="{ 'item-read': isRead(item.link) }"
+                          @click="markAsRead(item.link)">
+                          <div class="number-wrapper">
+                            <span class="item-number">{{ i+1 }}</span>
+                          </div>
+                          <span class="item-content">
+                            <el-link :href="item.link" target="_blank" @click.stop="markAsRead(item.link, false)">{{
+                              item.title
+                              }}</el-link><template v-if="feed.showPubDate"><template v-if="feed.isFolder && item.source && item.source !== ''"><span class="pubdate-tag">{{ pubDateTimeAgo(item.pubDate) }}</span><span class="source-tag">{{ item.source }}</span></template><template v-else><span class="pubdate-tag">{{ pubDateTimeAgo(item.pubDate) }}</span></template></template><template v-else><span v-if="feed.isFolder && item.source && item.source !== ''"
+                              class="source-tag"> {{ item.source
+                              }}</span></template>
+                          </span>
+                        </div>
+                      </el-list-item>
+                    </el-list>
+                  </div>
+                </el-card>
+              </el-col>
+        </el-row>
+      </el-main>
+      <el-footer>
+        <span class="footer-countdown">下次更新: <span class="refresh-all-link" @click="refreshAll" title="点击刷新所有源">{{
+            nextUpdateTime }}</span></span>
+      </el-footer>
+    </el-container>
+  </div>
+
+  <!-- <script src="https://unpkg.com/vue@next"></script> -->
+  <script src="static/vue.global.prod.js"></script>
+  <script src="static/Sortable.min.js"></script>
+
+  <!-- <script src="https://cdn.bootcdn.net/ajax/libs/element-plus/2.3.3/index.full.js"></script> -->
+  <script src="static/index.full.min.js"></script>
+  <script>
+    window.__initialFeeds = << .RssDataList | json >>;
+    const app = Vue.createApp({
+      data() {
+        return {
+          feeds: window.__initialFeeds || [],
+          currentGroup: '<< .DefaultGroup >>' || '关注',
+          groups: << if .Groups >><< .Groups | json >><< else >> ['关注'] << end >>,
+          showSEOFlag: false,
+          fullscreenLoading: true,
+          countdown: -1,
+          targetTimeStr: '<< .NextUpdateTime >>',
+          isPc: true,
+          refreshInterval: 0,
+          nextUpdateTime: '',
+          readItems: new Set(),
+
+          // Config related
+          showPasswordModal: false,
+          showConfigModal: false,
+          showFolderModal: false,
+          passwordInput: '',
+          config: null,
+          activeTab: 'feeds',
+          nightStartTime: '',
+          nightEndTime: '',
+          currentFolder: null,
+          showFeedSettingsModal: false,
+          currentEditingFeed: null,
+          tempKeywordFilterEnabled: false, // 关键词过滤开关
+          tempAIFilterEnabled: false, // AI过滤开关
+          tempScriptFilterEnabled: false, // 脚本规则过滤开关
+          showScriptHelp: false, // 脚本帮助显示开关
+          tempFilterSettings: {
+            threshold: 0,
+            customPrompt: '',
+            filterKeywords: [],
+            keepKeywords: [],
+            whitelistMode: false,
+            scriptFilterContent: ''
+          },
+          // 后处理临时设置
+          tempPostProcessEnabled: false,
+          tempPostProcessSettings: {
+            mode: 'ai',
+            prompt: '',
+            scriptContent: '',
+            modifyTitle: true,
+            modifyLink: false,
+            modifyPubDate: false
+          },
+          editingGroups: [],
+          touchStartX: 0,
+          touchStartY: 0,
+          clearingCache: null, // 用于跟踪正在清除的缓存类型
+          authToken: localStorage.getItem('rss_auth_token') || '',
+        };
+      },
+      computed: {
+        filteredFeeds() {
+          if (!this.feeds || this.feeds.length === 0) return [];
+          return this.feeds.filter(feed => {
+            const group = feed.group || '关注';
+            return group === this.currentGroup;
+          });
+        }
+      },
+      watch: {
+        showConfigModal(val) {
+          if (val) {
+            this.$nextTick(() => {
+              this.initSortable();
+            });
+          }
+        },
+        showFolderModal(val) {
+          if (val) {
+            this.$nextTick(() => {
+              // Delay slightly to ensure dialog animation/rendering
+              setTimeout(() => {
+                this.initFolderSortable();
+              }, 100);
+            });
+          }
+        },
+        activeTab(val) {
+          if (val === 'groups') {
+            this.syncEditingGroups();
+            this.$nextTick(() => {
+              this.initGroupSortable();
+            });
+          }
+        },
+      },
+      methods: {
+        togglePubDate(feed) {
+          feed.showPubDate = !feed.showPubDate;
+        },
+        selectGroup(group) {
+          this.currentGroup = group;
+          this.$nextTick(() => {
+            const activeTab = document.querySelector('.group-tab.active');
+            if (activeTab) {
+              activeTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+          });
+        },
+        timeAgo(dateStr) {
+          if (!dateStr) return '';
+
+          // 如果是错误消息，直接返回
+          if (dateStr.includes('加载失败') || dateStr.includes('重试')) {
+            return dateStr;
+          }
+
+          const date = new Date(dateStr.replace(/-/g, '/'));
+          const now = new Date();
+          const diff = Math.floor((now - date) / 1000);
+
+          if (diff < 60) return '刚刚';
+          if (diff < 3600) return Math.floor(diff / 60) + ' 分钟前';
+          if (diff < 86400) return Math.floor(diff / 3600) + ' 小时前';
+          if (diff < 2592000) return Math.floor(diff / 86400) + ' 天前';
+          return dateStr;
+        },
+        pubDateTimeAgo(dateStr) {
+          if (!dateStr) return '';
+
+          const date = new Date(dateStr.replace(/-/g, '/'));
+          const now = new Date();
+          const diff = Math.floor((now - date) / 1000);
+
+          if (diff < 60) return '刚刚';
+          if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
+          if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
+          if (diff < 2592000) return Math.floor(diff / 86400) + '天前';
+          return '';
+        },
+        updateCountdown() {
+          if (this.countdown < 0) return;
+
+          const minutes = Math.floor(this.countdown / 60);
+
+          if (minutes > 60) {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            this.nextUpdateTime = `${hours}小时${mins}分钟后`;
+          } else if (minutes > 0) {
+            this.nextUpdateTime = `${minutes}分钟后`;
+          } else {
+            this.nextUpdateTime = `不到1分钟`;
+          }
+        },
+        isRead(link) {
+          return this.readItems.has(link);
+        },
+        markAsRead(link, openLink = true) {
+          // 标记为已读
+          if (!this.readItems.has(link)) {
+            this.readItems.add(link);
+            this.saveReadItems();
+            // 同步到后端
+            this.syncReadToServer(link);
+          }
+          // 打开链接
+          if (openLink && link) {
+            window.open(link, '_blank');
+          }
+        },
+        async syncReadToServer(links) {
+          try {
+            const body = Array.isArray(links) ? { links: links } : { link: links };
+            await fetch('/api/mark-read', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body)
+            });
+          } catch (e) {
+            console.error('Failed to sync read state to server:', e);
+          }
+        },
+        openFeedLink(link) {
+          if (link) {
+            window.open(link, '_blank');
+          }
+        },
+        async refreshFeed(feed) {
+          try {
+            // 显示加载状态
+            feed._refreshing = true;
+            this.$message.info('正在刷新...');
+
+            // 调用后端API刷新指定源
+            const response = await fetch('/api/refresh-feed', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ link: feed.link })
+            });
+
+            if (response.ok) {
+              // 获取最新的feeds数据
+              const feedsResponse = await fetch('/feeds');
+              if (feedsResponse.ok) {
+                const feeds = await feedsResponse.json();
+                // 找到对应的feed并更新
+                const updatedFeed = feeds.find(f => f.link === feed.link);
+                if (updatedFeed) {
+                  // 更新对象属性
+                  Object.assign(feed, updatedFeed);
+                  this.$message.success('刷新成功');
+                } else {
+                  this.$message.warning('已刷新，但未能在列表中找到该源');
+                }
+              } else {
+                this.$message.error('获取最新数据失败');
+              }
+            } else {
+              this.$message.error('刷新请求失败');
+            }
+          } catch (e) {
+            console.error('Failed to refresh feed:', e);
+            this.$message.error('刷新失败');
+          } finally {
+            feed._refreshing = false;
+          }
+        },
+        async refreshAll() {
+          try {
+            this.$message.info('正在刷新所有源...');
+
+            // 遍历所有feeds并调用后端API刷新
+            const promises = this.feeds.map(feed =>
+              fetch('/api/refresh-feed', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ link: feed.link })
+              })
+            );
+
+            await Promise.all(promises);
+
+            // 等待后端处理完成
+            // await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // 获取最新的feeds数据
+            const feedsResponse = await fetch('/feeds');
+            if (feedsResponse.ok) {
+              const feeds = await feedsResponse.json();
+              // 更新所有feeds
+              feeds.forEach(newFeed => {
+                const existingFeed = this.feeds.find(f => f.link === newFeed.link);
+                if (existingFeed) {
+                  Object.assign(existingFeed, newFeed);
+                }
+              });
+              this.$message.success('全部刷新成功');
+              // 重置倒计时
+              this.countdown = this.refreshInterval * 60;
+              this.updateCountdown();
+            } else {
+              this.$message.error('获取最新数据失败');
+            }
+          } catch (e) {
+            console.error('Failed to refresh all feeds:', e);
+            this.$message.error('刷新失败');
+          }
+        },
+        async loadReadItems() {
+          try {
+            // 优先使用 head 中预加载的数据（避免跳变）
+            if (window.__preloadedReadItems && window.__preloadedReadItems.size > 0) {
+              this.readItems = window.__preloadedReadItems;
+            } else {
+              // 回退：从 localStorage 加载本地缓存
+              const saved = localStorage.getItem('rss-read-items');
+              if (saved) {
+                const items = JSON.parse(saved);
+                this.readItems = new Set(items);
+              }
+            }
+
+            // 从后端加载已读状态并合并（后台静默更新，不影响初始渲染）
+            const response = await fetch('/api/read-state');
+            if (response.ok) {
+              const serverItems = await response.json();
+              if (Array.isArray(serverItems)) {
+                // 合并后端数据到本地
+                serverItems.forEach(link => this.readItems.add(link));
+                this.saveReadItems();
+
+                // 同步本地独有的数据到后端
+                const saved = localStorage.getItem('rss-read-items');
+                const localItems = saved ? JSON.parse(saved) : [];
+                const localOnly = localItems.filter(link => !serverItems.includes(link));
+                if (localOnly.length > 0) {
+                  await fetch('/api/mark-read', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ links: localOnly })
+                  });
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Failed to load read items:', e);
+          }
+        },
+        saveReadItems() {
+          try {
+            // 只保留最近1000条已读记录，避免 localStorage 过大
+            const items = Array.from(this.readItems).slice(-1000);
+            localStorage.setItem('rss-read-items', JSON.stringify(items));
+          } catch (e) {
+            console.error('Failed to save read items:', e);
+          }
+        },
+
+        handleScroll(e) {
+          const container = e.target;
+          container.classList.add('scrolling');
+          if (container.scrollTimeout) clearTimeout(container.scrollTimeout);
+          container.scrollTimeout = setTimeout(() => {
+            container.classList.remove('scrolling');
+          }, 1000);
+        },
+
+        // Settings Methods
+        openSettings() {
+          // Check if password needed
+          const token = this.authToken;
+          fetch('/api/check-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: '', token: token })
+          }).then(async res => {
+            if (res.ok) {
+              // No password or empty password or valid token
+              this.fetchConfig();
+            } else {
+              // If we had a token but still failed, it might be expired
+              if (token) {
+                this.authToken = '';
+                localStorage.removeItem('rss_auth_token');
+              }
+              this.showPasswordModal = true;
+              this.passwordInput = '';
+            }
+          });
+        },
+        onPasswordModalOpened() {
+          this.$nextTick(() => {
+            if (this.$refs.passwordInput) {
+              this.$refs.passwordInput.focus();
+            }
+          });
+        },
+        async checkPassword() {
+          const res = await fetch('/api/check-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: this.passwordInput })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.token) {
+              this.authToken = data.token;
+              localStorage.setItem('rss_auth_token', data.token);
+            }
+            this.showPasswordModal = false;
+            this.fetchConfig(this.passwordInput);
+          } else {
+            this.$message.error('密码错误');
+          }
+        },
+        async fetchConfig(password = '') {
+          try {
+            const res = await fetch('/api/get-config', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ password, token: this.authToken })
+            });
+            if (res.ok) {
+              this.config = await res.json();
+              // Ensure sources is initialized
+              if (!this.config.sources) {
+                this.config.sources = [];
+              }
+              // Give every source a unique ID for UI handling
+              if (this.config.sources) {
+                this.config.sources.forEach(s => {
+                  s._id = Date.now() + Math.random();
+                  if (s.urls) {
+                    s.urls.forEach(u => u._id = Date.now() + Math.random());
+                  }
+                });
+              }
+
+              // Initialize group config
+              if (!this.config.groupOrder) this.config.groupOrder = [];
+              const derivedGroups = new Set();
+              this.config.sources.forEach(s => derivedGroups.add(s.group || '关注'));
+              derivedGroups.forEach(g => {
+                if (!this.config.groupOrder.includes(g)) {
+                  this.config.groupOrder.push(g);
+                }
+              });
+              this.editingGroups = this.config.groupOrder.map(g => ({ name: g }));
+
+              // 初始化 schedules
+              if (!this.config.schedules) this.config.schedules = [];
+              this.config.schedules.forEach(s => {
+                if (s.baseRefresh === undefined) s.baseRefresh = 0;
+                if (s.defaultCount === undefined) s.defaultCount = 0;
+              });
+
+              this.nightStartTime = this.config.nightStartTime || '';
+              this.nightEndTime = this.config.nightEndTime || '';
+              this.showConfigModal = true;
+            } else {
+              this.$message.error('获取配置失败');
+            }
+          } catch (e) {
+            this.$message.error('网络错误');
+          }
+        },
+        async saveConfig() {
+          try {
+            // UPDATE TIME
+            this.config.nightStartTime = this.nightStartTime;
+            this.config.nightEndTime = this.nightEndTime;
+            // Update Group Order
+            this.config.groupOrder = this.editingGroups.map(g => g.name);
+
+            const res = await fetch('/api/save-config', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                password: this.passwordInput, // Use the one entered
+                token: this.authToken,
+                config: this.config
+              })
+            });
+
+            if (res.ok) {
+              this.$message.success('保存成功，即将刷新页面');
+              this.showConfigModal = false;
+              setTimeout(() => location.reload(), 1000);
+            } else {
+              this.$message.error('保存失败');
+            }
+          } catch (e) {
+            this.$message.error('保存出错');
+          }
+        },
+        addFeed() {
+          this.config.sources.unshift({
+            _id: Date.now() + Math.random(),
+            name: '新建源',
+            url: 'http://',
+            editMode: true
+          });
+        },
+        addFolder() {
+          this.config.sources.unshift({
+            _id: Date.now() + Math.random(),
+            name: '新建文件夹',
+            urls: [],
+            editMode: true
+          });
+        },
+        removeSource(index) {
+          this.$confirm('确定删除该订阅源吗?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            this.config.sources.splice(index, 1);
+          }).catch(() => { });
+        },
+        enableEdit(row) {
+          row.editMode = true;
+        },
+        saveEdit(row) {
+          row.editMode = false;
+        },
+        manageFolder(row) {
+          this.currentFolder = row;
+          this.showFolderModal = true;
+        },
+        addFeedToFolder() {
+          if (!this.currentFolder.urls) this.currentFolder.urls = [];
+          this.currentFolder.urls.push({
+            _id: Date.now() + Math.random(),
+            name: '新源',
+            url: 'http://',
+            editMode: true
+          });
+        },
+        removeFeedFromFolder(index) {
+          this.currentFolder.urls.splice(index, 1);
+        },
+        openFeedSettings(row) {
+          this.currentEditingFeed = row;
+
+          // Init maxItems and cacheItems (直接使用 row 的值，el-input-number 会处理 undefined)
+          if (row.maxItems === undefined) row.maxItems = 0;
+          if (row.cacheItems === undefined) row.cacheItems = 0;
+          if (row.refreshCount === undefined) row.refreshCount = 0;
+          if (row.showPubDate === undefined) row.showPubDate = false;
+
+          // Init temp vars from row
+          if (!row.filter) {
+            this.tempKeywordFilterEnabled = false;
+            this.tempAIFilterEnabled = false;
+            this.tempScriptFilterEnabled = false;
+            this.tempFilterSettings = {
+              threshold: 0,
+              customPrompt: '',
+              filterKeywords: [],
+              keepKeywords: [],
+              whitelistMode: false,
+              scriptFilterContent: ''
+            };
+          } else {
+            this.tempKeywordFilterEnabled = row.filter.keywordEnabled || false;
+            this.tempAIFilterEnabled = row.filter.aiEnabled || false;
+            this.tempScriptFilterEnabled = row.filter.scriptFilterEnabled || false;
+
+            this.tempFilterSettings = {
+              threshold: row.filter.threshold || 0,
+              customPrompt: row.filter.customPrompt || '',
+              filterKeywords: row.filter.filterKeywords ? [...row.filter.filterKeywords] : [],
+              keepKeywords: row.filter.keepKeywords ? [...row.filter.keepKeywords] : [],
+              whitelistMode: row.filter.whitelistMode || false,
+              scriptFilterContent: row.filter.scriptFilterContent || ''
+            };
+          }
+
+          // Init post-process temp vars from row
+          if (!row.postProcess) {
+            this.tempPostProcessEnabled = false;
+            this.tempPostProcessSettings = {
+              mode: 'ai',
+              prompt: '',
+              scriptContent: '',
+              modifyTitle: true,
+              modifyLink: false,
+              modifyPubDate: false
+            };
+          } else {
+            this.tempPostProcessEnabled = row.postProcess.enabled || false;
+            this.tempPostProcessSettings = {
+              mode: row.postProcess.mode || 'ai',
+              prompt: row.postProcess.prompt || '',
+              scriptContent: row.postProcess.scriptContent || '',
+              modifyTitle: row.postProcess.modifyTitle !== false,
+              modifyLink: row.postProcess.modifyLink || false,
+              modifyPubDate: row.postProcess.modifyPubDate || false
+            };
+          }
+
+          this.showFeedSettingsModal = true;
+        },
+        saveFeedSettings() {
+          if (!this.currentEditingFeed) return;
+
+          // Handle maxItems and cacheItems
+          if (this.currentEditingFeed.maxItems === 0 || this.currentEditingFeed.maxItems === null) {
+            this.currentEditingFeed.maxItems = undefined;
+          }
+          if (this.currentEditingFeed.cacheItems === 0 || this.currentEditingFeed.cacheItems === null) {
+            this.currentEditingFeed.cacheItems = undefined;
+          }
+          if (this.currentEditingFeed.refreshCount === 0 || this.currentEditingFeed.refreshCount === null) {
+            this.currentEditingFeed.refreshCount = undefined;
+          }
+          // Handle showPubDate
+          if (!this.currentEditingFeed.showPubDate) {
+            this.currentEditingFeed.showPubDate = undefined;
+          }
+
+          // Construct filter object
+          let filter = this.currentEditingFeed.filter || {};
+
+          // 关键词过滤开关
+          if (this.tempKeywordFilterEnabled) {
+            filter.keywordEnabled = true;
+          } else {
+            filter.keywordEnabled = undefined;
+          }
+
+          // AI过滤开关
+          if (this.tempAIFilterEnabled) {
+            filter.aiEnabled = true;
+          } else {
+            filter.aiEnabled = undefined;
+          }
+
+          // 脚本规则过滤开关
+          if (this.tempScriptFilterEnabled) {
+            filter.scriptFilterEnabled = true;
+          } else {
+            filter.scriptFilterEnabled = undefined;
+          }
+
+          // 关键词过滤相关设置
+          if (this.tempKeywordFilterEnabled) {
+            if (this.tempFilterSettings.filterKeywords.length > 0) filter.filterKeywords = this.tempFilterSettings.filterKeywords;
+            else filter.filterKeywords = undefined;
+
+            if (this.tempFilterSettings.keepKeywords.length > 0) filter.keepKeywords = this.tempFilterSettings.keepKeywords;
+            else filter.keepKeywords = undefined;
+
+            // 白名单模式
+            if (this.tempFilterSettings.whitelistMode) filter.whitelistMode = true;
+            else filter.whitelistMode = undefined;
+          } else {
+            filter.filterKeywords = undefined;
+            filter.keepKeywords = undefined;
+            filter.whitelistMode = undefined;
+          }
+
+          // AI过滤相关设置
+          if (this.tempAIFilterEnabled) {
+            if (this.tempFilterSettings.threshold > 0) filter.threshold = this.tempFilterSettings.threshold;
+            else filter.threshold = undefined;
+
+            if (this.tempFilterSettings.customPrompt) filter.customPrompt = this.tempFilterSettings.customPrompt;
+            else filter.customPrompt = undefined;
+          } else {
+            filter.threshold = undefined;
+            filter.customPrompt = undefined;
+          }
+
+          // 脚本规则过滤相关设置
+          if (this.tempScriptFilterEnabled) {
+            if (this.tempFilterSettings.scriptFilterContent) filter.scriptFilterContent = this.tempFilterSettings.scriptFilterContent;
+            else filter.scriptFilterContent = undefined;
+          } else {
+            filter.scriptFilterContent = undefined;
+          }
+
+          // Check if filter object is empty (all undefined)
+          const filterEmpty = Object.keys(filter).every(k => filter[k] === undefined);
+
+          if (filterEmpty) {
+            this.currentEditingFeed.filter = undefined;
+          } else {
+            this.currentEditingFeed.filter = filter;
+          }
+
+          // Construct post-process object
+          if (this.tempPostProcessEnabled) {
+            let postProcess = {
+              enabled: true,
+              mode: this.tempPostProcessSettings.mode,
+              modifyTitle: this.tempPostProcessSettings.modifyTitle,
+              modifyLink: this.tempPostProcessSettings.modifyLink,
+              modifyPubDate: this.tempPostProcessSettings.modifyPubDate
+            };
+
+            if (this.tempPostProcessSettings.mode === 'ai' && this.tempPostProcessSettings.prompt) {
+              postProcess.prompt = this.tempPostProcessSettings.prompt;
+            }
+            if (this.tempPostProcessSettings.mode === 'script' && this.tempPostProcessSettings.scriptContent) {
+              postProcess.scriptContent = this.tempPostProcessSettings.scriptContent;
+            }
+
+            this.currentEditingFeed.postProcess = postProcess;
+          } else {
+            this.currentEditingFeed.postProcess = undefined;
+          }
+
+          this.showFeedSettingsModal = false;
+        },
+        async clearCacheAndRefresh(type) {
+          if (!this.currentEditingFeed || !this.currentEditingFeed.url) {
+            this.$message.warning('请先保存设置后再重新处理');
+            return;
+          }
+
+          const loadingType = type === 'postprocess' ? 'postprocess' : (this.tempAIFilterEnabled ? 'ai' : 'keyword');
+          this.clearingCache = loadingType;
+
+          try {
+            const response = await fetch('/api/clear-cache', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                url: this.currentEditingFeed.url,
+                type: type
+              })
+            });
+
+            if (response.ok) {
+              const result = await response.json();
+              if (result.cleared > 0) {
+                this.$message.success(`已清除 ${result.cleared} 条缓存，正在重新处理...`);
+              } else {
+                this.$message.info('没有需要清除的缓存，正在刷新...');
+              }
+
+              // 等待一下让后端刷新完成
+              await new Promise(resolve => setTimeout(resolve, 2000));
+
+              // 获取最新的feeds数据
+              const feedsResponse = await fetch('/feeds');
+              if (feedsResponse.ok) {
+                const feeds = await feedsResponse.json();
+                // 更新对应的feed
+                feeds.forEach(newFeed => {
+                  const existingFeed = this.feeds.find(f => f.link === newFeed.link);
+                  if (existingFeed) {
+                    Object.assign(existingFeed, newFeed);
+                  }
+                });
+                this.$message.success('刷新完成');
+              }
+            } else {
+              const errorText = await response.text();
+              this.$message.error('清除失败: ' + errorText);
+            }
+          } catch (e) {
+            console.error('Failed to clear cache:', e);
+            this.$message.error('操作失败');
+          } finally {
+            this.clearingCache = null;
+          }
+        },
+        moveSourceUp(index) {
+          if (index > 0) {
+            const item = this.config.sources.splice(index, 1)[0];
+            this.config.sources.splice(index - 1, 0, item);
+          }
+        },
+        moveSourceDown(index) {
+          if (index < this.config.sources.length - 1) {
+            const item = this.config.sources.splice(index, 1)[0];
+            this.config.sources.splice(index + 1, 0, item);
+          }
+        },
+        moveFeedInFolderUp(index) {
+          if (index > 0) {
+            const item = this.currentFolder.urls.splice(index, 1)[0];
+            this.currentFolder.urls.splice(index - 1, 0, item);
+          }
+        },
+        moveFeedInFolderDown(index) {
+          if (index < this.currentFolder.urls.length - 1) {
+            const item = this.currentFolder.urls.splice(index, 1)[0];
+            this.currentFolder.urls.splice(index + 1, 0, item);
+          }
+        },
+        initSortable() {
+          const el = this.isPc
+            ? document.querySelector('.sources-table .el-table__body-wrapper tbody')
+            : document.querySelector('.sources-list');
+
+          if (el && !el._sortable) {
+            el._sortable = Sortable.create(el, {
+              animation: 150,
+              handle: this.isPc ? '.drag-handle' : '.drag-handle-mobile',
+              delay: 50,
+              delayOnTouchOnly: true,
+              touchStartThreshold: 5,
+              fallbackTolerance: 5,
+              forceFallback: !this.isPc,
+              onEnd: ({ newIndex, oldIndex }) => {
+                if (newIndex === oldIndex) return;
+                const item = this.config.sources.splice(oldIndex, 1)[0];
+                this.config.sources.splice(newIndex, 0, item);
+              }
+            });
+          }
+        },
+        initFolderSortable() {
+          const el = this.isPc
+            ? document.querySelector('.folder-table .el-table__body-wrapper tbody')
+            : document.querySelector('.folder-list');
+
+          if (el && !el._sortable) {
+            el._sortable = Sortable.create(el, {
+              animation: 150,
+              handle: this.isPc ? '.drag-handle' : '.drag-handle-mobile',
+              delay: 50,
+              delayOnTouchOnly: true,
+              touchStartThreshold: 5,
+              fallbackTolerance: 5,
+              forceFallback: !this.isPc,
+              onEnd: ({ newIndex, oldIndex }) => {
+                if (newIndex === oldIndex) return;
+                const item = this.currentFolder.urls.splice(oldIndex, 1)[0];
+                this.currentFolder.urls.splice(newIndex, 0, item);
+              }
+            });
+          }
+        },
+        initGroupSortable() {
+          const el = document.querySelector('.groups-table .el-table__body-wrapper tbody');
+          if (el && !el._sortable) {
+            el._sortable = Sortable.create(el, {
+              animation: 150,
+              handle: '.group-drag-handle',
+              delay: 50,
+              delayOnTouchOnly: true,
+              touchStartThreshold: 5,
+              fallbackTolerance: 5,
+              forceFallback: !this.isPc,
+              onEnd: ({ newIndex, oldIndex }) => {
+                if (newIndex === oldIndex) return;
+                const item = this.editingGroups.splice(oldIndex, 1)[0];
+                this.editingGroups.splice(newIndex, 0, item);
+              }
+            });
+          }
+        },
+        syncEditingGroups() {
+          if (!this.config) return;
+          const derivedGroups = new Set();
+          this.config.sources.forEach(s => derivedGroups.add(s.group || '关注'));
+
+          // Current existing in editingGroups
+          const currentNames = this.editingGroups.map(g => g.name);
+
+          // Add any new ones detected in sources
+          derivedGroups.forEach(g => {
+            if (!currentNames.includes(g)) {
+              this.editingGroups.push({ name: g });
+            }
+          });
+          // Note: we do not remove groups that are in editingGroups but not in sources,
+          // to preserve order if temporary empty, or let user delete manually (if we added delete button, but we didn't)
+        },
+        checkIsPc() {
+          this.isPc = !window.matchMedia('(max-width: 767px)').matches;
+        },
+        handleTouchStart(e) {
+          if (this.isPc) return;
+          // 如果触点在标签页容器内，则优先允许标签页自身的水平滚动，不触发页面级切换
+          if (e.target.closest('.group-tabs-container')) return;
+          this.touchStartX = e.touches[0].clientX;
+          this.touchStartY = e.touches[0].clientY;
+        },
+        handleTouchEnd(e) {
+          if (this.isPc) return;
+          const touchEndX = e.changedTouches[0].clientX;
+          const touchEndY = e.changedTouches[0].clientY;
+          const deltaX = touchEndX - this.touchStartX;
+          const deltaY = touchEndY - this.touchStartY;
+
+          // 阈值：水平移动距离 > 70 且垂直移动距离较小 (避免与上下滚动冲突)
+          if (Math.abs(deltaY) < 100) {
+            const currentIndex = this.groups.indexOf(this.currentGroup);
+            if (currentIndex === -1 || this.groups.length <= 1) return;
+
+            if (deltaX > 70) {
+              // 向右滑动 -> 上一个分组
+              const prevIndex = (currentIndex - 1 + this.groups.length) % this.groups.length;
+              this.selectGroup(this.groups[prevIndex]);
+            } else if (deltaX < -70) {
+              // 向左滑动 -> 下一个分组
+              const nextIndex = (currentIndex + 1) % this.groups.length;
+              this.selectGroup(this.groups[nextIndex]);
+            }
+          }
+        },
+        detectMultiline() {
+          const items = document.querySelectorAll('.item-content');
+          items.forEach(item => {
+            // Check if height exceeds single line height (approx 25px - 30px)
+            // Using 40px as a safe threshold
+            if (item.offsetHeight > 40) {
+              item.classList.add('is-multiline');
+            } else {
+              item.classList.remove('is-multiline');
+            }
+          });
+        },
+      },
+      updated() {
+        this.$nextTick(() => {
+          this.detectMultiline();
+        });
+      },
+      async created() {
+        this.fullscreenLoading = false;
+        // Initialize isPc and add listener
+        this.checkIsPc();
+        window.addEventListener('resize', this.checkIsPc);
+
+        // Calculate countdown based on target time
+        if (this.targetTimeStr) {
+          const target = new Date(this.targetTimeStr);
+          // Check if valid date and year > 2000 (valid schedule)
+          if (!isNaN(target.getTime()) && target.getFullYear() > 2000) {
+            const now = new Date();
+            let diff = Math.floor((target - now) / 1000);
+            if (diff < 0) {
+              // 如果下次更新时间在过去，说明服务端还没来得及更新，设定10秒后重试
+              this.countdown = 10;
+              this.nextUpdateTime = '即将刷新...';
+            } else {
+              this.countdown = diff;
+            }
+          } else {
+            this.countdown = -1;
+            this.nextUpdateTime = '暂无自动更新计划';
+          }
+        } else {
+          this.countdown = -1;
+          this.nextUpdateTime = '暂无自动更新计划';
+        }
+        // 初始化倒计时显示
+        this.updateCountdown();
+        // 加载已读状态
+        this.loadReadItems();
+      },
+      async mounted() {
+        const loader = document.getElementById('initial-loader');
+        if (loader) {
+          loader.style.opacity = '0';
+          setTimeout(() => {
+            loader.style.display = 'none';
+          }, 300);
+        }
+
+        const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        const connect = () => {
+          const socket = new WebSocket(protocol + window.location.host + "/ws");
+          socket.onmessage = event => {
+            const feed = JSON.parse(event.data);
+            const existingFeed = this.feeds.find(f => f.link === feed.link);
+            if (existingFeed) {
+              Object.assign(existingFeed, feed);
+            } else {
+              this.feeds.push(feed);
+            }
+            this.showSEOFlag = false;
+          };
+          const reloadHtml = () => {
+            if (socket.readyState === WebSocket.CLOSED || socket.readyState === WebSocket.CLOSING) {
+              console.log("WebSocket disconnected");
+            }
+          }
+          socket.onclose = event => {
+            if (this.isPc && this.refreshInterval > 0) {
+              console.log("WebSocket closed.");
+            }
+          };
+          // Send heartbeat message every 60 seconds
+          const sendHeartbeat = () => {
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send("heartbeat");
+            } else if (socket.readyState === WebSocket.CLOSED || socket.readyState === WebSocket.CLOSING) {
+              reloadHtml()
+            }
+          };
+          if (this.isPc && this.refreshInterval > 0) {
+            setInterval(sendHeartbeat, 60000);
+          }
+          // 倒计时更新（无论是否PC都显示）
+          const timer = setInterval(() => {
+            if (this.countdown > 0) {
+              this.countdown--;
+              this.updateCountdown();
+            } else if (this.countdown === 0) {
+              // 倒计时结束
+              clearInterval(timer);
+              this.nextUpdateTime = '刷新网页中...';
+              // 5秒后刷新页面
+              setTimeout(() => {
+                location.reload();
+              }, 5000);
+            } else {
+              // countdown < 0, 不执行倒计时
+            }
+          }, 1000);
+
+          // 如果初始状态就是0，也要处理
+          if (this.countdown === 0) {
+            this.nextUpdateTime = '即将刷新...';
+          }
+        };
+        connect();
+
+
+      },
+      beforeDestroy() {
+        // 在组件销毁前手动关闭 WebSocket 连接
+        this.socket.close();
+      }
+    });
+
+    app.use(ElementPlus);
+    app.mount("#app");
+
+    // 服务端渲染的时间转换为相对时间
+    function timeAgo(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr.replace(/-/g, '/'));
+      const now = new Date();
+      const diff = Math.floor((now - date) / 1000);
+
+      if (diff < 60) return '刚刚';
+      if (diff < 3600) return Math.floor(diff / 60) + ' 分钟前';
+      if (diff < 86400) return Math.floor(diff / 3600) + ' 小时前';
+      if (diff < 2592000) return Math.floor(diff / 86400) + ' 天前';
+      return dateStr;
+    }
+
+    // 发布时间转换为相对时间（用于条目发布时间显示）
+    function pubDateTimeAgo(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr.replace(/-/g, '/'));
+      const now = new Date();
+      const diff = Math.floor((now - date) / 1000);
+
+      if (diff < 60) return '刚刚';
+      if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
+      if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
+      if (diff < 2592000) return Math.floor(diff / 86400) + '天前';
+      return '';
+    }
+
+    // 更新页面上的时间显示
+    document.querySelectorAll('time[data-time]').forEach(el => {
+      el.textContent = timeAgo(el.getAttribute('data-time'));
+    });
+
+    // 更新页面上的发布时间显示
+    document.querySelectorAll('.pubdate-tag[data-pubdate]').forEach(el => {
+      el.textContent = pubDateTimeAgo(el.getAttribute('data-pubdate'));
+    });
+
+    // 处理服务端渲染条目的已读状态
+    // 第一步：同步立即应用 localStorage 中的已读状态（避免视觉跳变）
+    (function () {
+      // 使用 head 中预加载的数据，如果没有则重新读取
+      var readItems = window.__preloadedReadItems;
+      if (!readItems) {
+        try {
+          var saved = localStorage.getItem('rss-read-items');
+          readItems = saved ? new Set(JSON.parse(saved)) : new Set();
+        } catch (e) {
+          readItems = new Set();
+        }
+      }
+
+      // 立即应用已读状态
+      document.querySelectorAll('.seo-item').forEach(function (el) {
+        var link = el.getAttribute('data-link');
+        if (readItems.has(link)) {
+          el.classList.add('item-read');
+        }
+
+        // 添加点击事件
+        el.addEventListener('click', function () {
+          if (readItems.has(link)) return;
+          readItems.add(link);
+          el.classList.add('item-read');
+          // 保存到 localStorage
+          var items = Array.from(readItems).slice(-1000);
+          localStorage.setItem('rss-read-items', JSON.stringify(items));
+          // 同步到后端
+          fetch('/api/mark-read', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ link: link })
+          }).catch(function (e) { console.error('Failed to sync read state:', e); });
+        });
+      });
+
+      // 保存引用供后续使用
+      window.__seoReadItems = readItems;
+    })();
+
+    // 第二步：异步从后端加载已读状态并增量更新（不会造成跳变，只会补充遗漏的已读状态）
+    (async function () {
+      try {
+        var readItems = window.__seoReadItems || new Set();
+        var response = await fetch('/api/read-state');
+        if (response.ok) {
+          var serverItems = await response.json();
+          if (Array.isArray(serverItems)) {
+            var hasNewItems = false;
+            serverItems.forEach(function (link) {
+              if (!readItems.has(link)) {
+                readItems.add(link);
+                hasNewItems = true;
+                // 增量应用新的已读状态
+                var el = document.querySelector('.seo-item[data-link="' + CSS.escape(link) + '"]');
+                if (el && !el.classList.contains('item-read')) {
+                  el.classList.add('item-read');
+                }
+              }
+            });
+            // 如果有新数据，更新 localStorage
+            if (hasNewItems) {
+              var items = Array.from(readItems).slice(-1000);
+              localStorage.setItem('rss-read-items', JSON.stringify(items));
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch read state from server:', e);
+      }
+    })();
+  </script>
+  <script>
+    // 注册 Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/static/sw.js')
+          .then(registration => {
+            console.log('SW registered: ', registration);
+          })
+          .catch(error => {
+            console.log('SW registration failed: ', error);
+          });
+      });
+    }
+  </script>
+</body>
+
+</html>

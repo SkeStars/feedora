@@ -1,0 +1,11 @@
+services:
+  server:
+    build: .
+    container_name: feedora
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - "$PWD/config.json:/app/config.json"
+      - "$PWD/data:/app/data"
+    stop_grace_period: 10s

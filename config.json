@@ -1,0 +1,137 @@
+{
+    "sources": [
+        {
+            "url": "https://bf.zzxworld.com/feed.xml",
+            "name": "BlogFinder",
+            "showPubDate": true
+        },
+        {
+            "name": "虎嗅网",
+            "icon": "https://www.huxiu.com/favicon.ico",
+            "urls": [
+                {
+                    "url": "https://open-v2.huxiu.com/news/getnewslist?HUXIUOPENID=chouti\u0026HUXIUOPENKEY=ed2f121cbbf65b726998f689d1aebdc2\u0026data_type=xml\u0026content=1.rss",
+                    "name": "虎嗅网APP"
+                },
+                {
+                    "url": "https://www.huxiu.com/rss/0.xml"
+                }
+            ]
+        },
+        {
+            "url": "https://rsshub.rssforever.com/telegram/channel/wxbyg",
+            "name": "微信搬运工",
+            "icon": "https://img02.sogoucdn.com/app/a/200913/1a4563815570b841d8ec1ba12c11da8a.png",
+            "postProcess": {
+                "enabled": true,
+                "mode": "script",
+                "scriptContent": "# 读取JSON\ninput=$(cat)\n\n# 提取字段\ntitle=$(echo \"$input\" | jq -r '.title' | sed 's/ | 原文$//')\ndesc=$(echo \"$input\" | jq -r '.description')\n\n# 多种方式尝试提取微信链接\nlink=$(echo \"$desc\" | grep -oE 'https://mp\\.weixin\\.qq\\.com/s/[^\"\u003c\u003e\u0026]+' | head -1)\n\n# 输出调试信息到stderr（不影响JSON输出）\n\u003e\u00262 echo \"DEBUG: extracted link = $link\"\n\n# 输出JSON\njq -n --arg title \"$title\" --arg link \"$link\" '{title: $title, link: $link}'",
+                "modifyTitle": true,
+                "modifyLink": true
+            }
+        },
+        {
+            "url": "https://rsshub.rssforever.com/163/exclusive/sd",
+            "name": "网易数读",
+            "icon": "https://img02.sogoucdn.com/app/a/200913/a51423369a5d5a02e23e02dbe7ef3ac2.png"
+        },
+        {
+            "url": "https://rss.mifaw.com/articles/5c8bb11a3c41f61efd36683e/5c919d543882afa09dff3fa3",
+            "name": "知乎热榜",
+            "icon": "https://static.zhihu.com/heifetz/favicon.ico",
+            "filter": {
+                "aiEnabled": false,
+                "customPrompt": "你是一个严格的内容分类器。判断给定的RSS文章是否为推广内容、软文或游戏、娱乐圈、军事、体育、影音、台湾等相关内容。请返回JSON格式：{\"is_filtered\": boolean, \"confidence\": 0-1之间的浮点数, \"reason\": \"过滤原因\"}",
+                "threshold": 0.8
+            },
+            "group": "社区"
+        },
+        {
+            "url": "https://linux.do/latest.rss",
+            "name": "LINUX DO",
+            "cacheItems": 80,
+            "group": "社区"
+        },
+        {
+            "name": "少数派",
+            "icon": "https://th.bing.com/th/id/ODF.OzmBrsWvX2EyzEutvQjbDw?w=32\u0026h=32\u0026qlt=90\u0026pcl=fffffa\u0026o=6\u0026pid=1.2",
+            "urls": [
+                {
+                    "url": "https://rsshub.rssforever.com/sspai/matrix",
+                    "name": "Matrix"
+                },
+                {
+                    "url": "https://tgmeng.com/media/shaoshupai/rss.xml",
+                    "name": "热门",
+                    "ignoreOriginalPubDate": true
+                }
+            ],
+            "group": "社区"
+        },
+        {
+            "url": "https://hostloc.com/forum.php?mod=rss\u0026fid=45\u0026auth=389ec3vtQanmEuRoghE%2FpZPWnYCPmvwWgSa7RsfjbQ%2BJpA%2F6y6eHAx%2FKqtmPOg",
+            "name": "全球主机交流论坛",
+            "icon": "https://hostloc.com/favicon.ico",
+            "filter": {
+                "filterKeywords": [
+                    "招聘",
+                    "广告"
+                ],
+                "keepKeywords": [
+                    "开源",
+                    "教程"
+                ]
+            },
+            "cacheItems": 50,
+            "group": "社区"
+        },
+        {
+            "url": "https://rsshub.rssforever.com/v2ex/tab/hot?limit=35",
+            "name": "V2EX",
+            "icon": "https://v2ex.com/favicon.ico",
+            "group": "社区"
+        },
+        {
+            "name": "轻松一刻",
+            "icon": "https://th.bing.com/th/id/ODF.XCBEBSJSE3TYEQI10xU6Dw?w=32\u0026h=32\u0026qlt=93\u0026pcl=fffffa\u0026o=6\u0026pid=1.2",
+            "urls": [
+                {
+                    "url": "https://feedx.net/rss/163easy.xml",
+                    "name": "网易"
+                },
+                {
+                    "url": "http://hornydragon.blogspot.com/feeds/posts/default",
+                    "name": "好色龍"
+                }
+            ],
+            "group": "FUN"
+        }
+    ],
+    "schedules": [
+        {
+            "startTime": "08:30:00",
+            "endTime": "01:00:00",
+            "baseRefresh": 10,
+            "defaultCount": 6
+        }
+    ],
+    "password": "1234",
+    "sessionDuration": 720,
+    "aiFilter": {
+        "enabled": true,
+        "apiKey": "",
+        "model": "doubao-seed-1-8-251228",
+        "systemPrompt": "你是一个严格的内容分类器。判断给定的RSS文章是否为广告、推广内容、软文或低质量内容。请返回JSON格式：{\"is_filtered\": boolean, \"confidence\": 0-1之间的浮点数, \"reason\": \"过滤原因\"}",
+        "threshold": 0.7,
+        "maxTokens": 500,
+        "temperature": 0.1,
+        "timeout": 30,
+        "concurrency": 5
+    },
+    "groupOrder": [
+        "社区",
+        "关注",
+        "FUN"
+    ],
+    "defaultGroup": "关注"
+}

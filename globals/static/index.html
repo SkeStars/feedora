@@ -2415,7 +2415,8 @@
             return dateStr;
           }
 
-          const date = new Date(dateStr.replace(/-/g, '/'));
+          // RFC3339 格式可以直接解析，包含时区信息
+          const date = new Date(dateStr);
           const now = new Date();
           const diff = Math.floor((now - date) / 1000);
 
@@ -2428,7 +2429,8 @@
         pubDateTimeAgo(dateStr) {
           if (!dateStr) return '';
 
-          const date = new Date(dateStr.replace(/-/g, '/'));
+          // RFC3339 格式可以直接解析，包含时区信息
+          const date = new Date(dateStr);
           const now = new Date();
           const diff = Math.floor((now - date) / 1000);
 
@@ -3299,7 +3301,8 @@
     // 服务端渲染的时间转换为相对时间
     function timeAgo(dateStr) {
       if (!dateStr) return '';
-      const date = new Date(dateStr.replace(/-/g, '/'));
+      // RFC3339 格式可以直接解析，包含时区信息
+      const date = new Date(dateStr);
       const now = new Date();
       const diff = Math.floor((now - date) / 1000);
 
@@ -3313,7 +3316,8 @@
     // 发布时间转换为相对时间（用于条目发布时间显示）
     function pubDateTimeAgo(dateStr) {
       if (!dateStr) return '';
-      const date = new Date(dateStr.replace(/-/g, '/'));
+      // RFC3339 格式可以直接解析，包含时区信息
+      const date = new Date(dateStr);
       const now = new Date();
       const diff = Math.floor((now - date) / 1000);
 

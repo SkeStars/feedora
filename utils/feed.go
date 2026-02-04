@@ -58,7 +58,7 @@ func getEffectiveInterval(rssURL string, sourceRefreshCount int) (int, string) {
 func UpdateFeeds() {
 	for {
 		now := time.Now()
-		formattedTime := now.Format("2006-01-02 15:04:05")
+		formattedTime := now.Format(time.RFC3339)
 
 		var nextGlobalUpdate time.Time
 
@@ -325,9 +325,9 @@ func UpdateFeedWithOptions(url, formattedTime string, isManual bool, forceReproc
 		} else {
 			// 正常模式：优先使用RSS自带的时间戳
 			if v.PublishedParsed != nil {
-				pubDate = v.PublishedParsed.Format("2006-01-02 15:04:05")
+				pubDate = v.PublishedParsed.Format(time.RFC3339)
 			} else if v.UpdatedParsed != nil {
-				pubDate = v.UpdatedParsed.Format("2006-01-02 15:04:05")
+				pubDate = v.UpdatedParsed.Format(time.RFC3339)
 			} else {
 				// RSS没有时间戳，从缓存恢复或使用当前时间
 				if cached, ok := cachedPubDates[v.Link]; ok {

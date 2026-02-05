@@ -2205,6 +2205,47 @@
                   <div class="tip">发送给AI的文章描述截断长度（默认2000字符）</div>
                 </el-form-item>
 
+                <el-row :gutter="20">
+                  <el-col :span="12">
+                    <el-form-item label="Max Tokens">
+                      <el-input-number v-model="config.aiClassify.maxTokens" :min="1" :max="4096"></el-input-number>
+                      <div class="tip">AI 生成的最大 Token 数</div>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="12">
+                    <el-form-item label="Temperature">
+                      <el-input-number v-model="config.aiClassify.temperature" :min="0" :max="2" :precision="1" :step="0.1"></el-input-number>
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+
+                <el-row :gutter="20">
+                  <el-col :span="12">
+                    <el-form-item label="批量处理数">
+                      <el-input-number v-model="config.aiClassify.batchSize" :min="1" :max="50"></el-input-number>
+                      <div class="tip">单次请求包含的文章数量</div>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="12">
+                    <el-form-item label="超时时间 (秒)">
+                      <el-input-number v-model="config.aiClassify.timeout" :min="1" :max="300"></el-input-number>
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+
+                <el-row :gutter="20">
+                  <el-col :span="12">
+                    <el-form-item label="重试次数">
+                      <el-input-number v-model="config.aiClassify.retryCount" :min="0" :max="10"></el-input-number>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="12">
+                    <el-form-item label="重试等待 (秒)">
+                      <el-input-number v-model="config.aiClassify.retryWait" :min="1" :max="60"></el-input-number>
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+
                 <!-- 类别管理 -->
                 <el-divider content-position="left">分类类别管理</el-divider>
                 <div class="categories-manager" v-if="config && config.aiClassify">
@@ -3086,7 +3127,13 @@
               apiBase: '',
               model: '',
               systemPrompt: '',
+              maxTokens: 500,
+              temperature: 0.1,
               maxDescLength: 2000,
+              batchSize: 5,
+              timeout: 30,
+              retryCount: 3,
+              retryWait: 2,
               categoryPackages: []
             }
           },
@@ -3544,10 +3591,22 @@
                   model: '',
                   systemPrompt: '',
                   maxDescLength: 2000,
+                  batchSize: 5,
+                  timeout: 30,
+                  retryCount: 3,
+                  retryWait: 2,
                   categoryPackages: []
                 };
-              } else if (!this.config.aiClassify.categoryPackages) {
-                this.config.aiClassify.categoryPackages = [];
+              } else {
+                if (this.config.aiClassify.maxTokens === undefined) this.config.aiClassify.maxTokens = 500;
+                if (this.config.aiClassify.temperature === undefined) this.config.aiClassify.temperature = 0.1;
+                if (this.config.aiClassify.batchSize === undefined) this.config.aiClassify.batchSize = 5;
+                if (this.config.aiClassify.timeout === undefined) this.config.aiClassify.timeout = 30;
+                if (this.config.aiClassify.retryCount === undefined) this.config.aiClassify.retryCount = 3;
+                if (this.config.aiClassify.retryWait === undefined) this.config.aiClassify.retryWait = 2;
+                if (!this.config.aiClassify.categoryPackages) {
+                  this.config.aiClassify.categoryPackages = [];
+                }
               }
 
               // Sorting Logic

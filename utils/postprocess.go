@@ -108,8 +108,9 @@ func PostProcessItems(items []models.Item, rssURL string) []models.Item {
 					result.fromCache = true
 				} else {
 					// 没有缓存，执行后处理（带重试机制）
-					const maxRetries = 3
-					const retryDelay = 3 * time.Second
+					aiConfig := globals.RssUrls.AIClassify
+					maxRetries := aiConfig.GetRetryCount()
+					retryWait := time.Duration(aiConfig.GetRetryWait()) * time.Second
 					
 					var processedItem models.Item
 					var lastErr error
@@ -126,15 +127,19 @@ func PostProcessItems(items []models.Item, rssURL string) []models.Item {
 						}
 						
 						if attempt < maxRetries {
-							log.Printf("[后处理重试] 条目 [%s]: 第 %d 次尝试失败: %v，%d秒后重试...", 
-								job.item.Title, attempt, lastErr, int(retryDelay.Seconds()))
-							time.Sleep(retryDelay)
+							retryType := "失败"
+							if lastErr != nil && (strings.Contains(strings.ToLower(lastErr.Error()), "timeout") || strings.Contains(lastErr.Error(), "deadline exceeded")) {
+								retryType = "超时"
+							}
+							log.Printf("[后处理重试] 条目 [%s]: 第 %d/%d 次尝试%s: %v，%d秒后重试...", 
+								job.item.Title, attempt, maxRetries-1, retryType, lastErr, int(retryWait.Seconds()))
+							time.Sleep(retryWait)
 						}
 					}
 
 					if lastErr != nil {
 						result.err = lastErr
-						log.Printf("[后处理失败] 条目 [%s]: 已重试 %d 次，最终失败: %v", job.item.Title, maxRetries, lastErr)
+						log.Printf("[后处理失败] 条目 [%s]: 已尝试 %d 次，最终失败: %v", job.item.Title, maxRetries, lastErr)
 						// 失败后不存入缓存，下次源更新时将重新处理
 					} else {
 						// 如果后处理会修改 Link，先保存原始链接

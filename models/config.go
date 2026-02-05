@@ -61,6 +61,12 @@ type AIClassifyConfig struct {
 	Concurrency int `json:"concurrency,omitempty"`
 	// 最大描述长度（发送给AI的内容描述截断长度，默认2000）
 	MaxDescLength int `json:"maxDescLength,omitempty"`
+	// 批量处理数量 (Batch Size)，默认 5
+	BatchSize int `json:"batchSize,omitempty"`
+	// 重试次数，默认 3
+	RetryCount int `json:"retryCount,omitempty"`
+	// 重试等待时间（秒），默认 2
+	RetryWait int `json:"retryWait,omitempty"`
 	// 分类类别包列表 (新版)
 	CategoryPackages []CategoryPackage `json:"categoryPackages,omitempty"`
 }
@@ -136,6 +142,33 @@ func (c AIClassifyConfig) GetMaxDescLength() int {
 		return 2000
 	}
 	return c.MaxDescLength
+}
+
+// GetBatchSize 获取批量处理数量，默认为 5
+func (c AIClassifyConfig) GetBatchSize() int {
+	if c.BatchSize <= 0 {
+		return 5
+	}
+	return c.BatchSize
+}
+
+// GetRetryCount 获取重试次数，默认为 3
+func (c AIClassifyConfig) GetRetryCount() int {
+	if c.RetryCount < 0 {
+		return 0
+	}
+	if c.RetryCount == 0 {
+		return 3
+	}
+	return c.RetryCount
+}
+
+// GetRetryWait 获取重试等待时间（秒），默认为 2
+func (c AIClassifyConfig) GetRetryWait() int {
+	if c.RetryWait <= 0 {
+		return 2
+	}
+	return c.RetryWait
 }
 
 // FetchSchedule 抓取计划规则

@@ -165,19 +165,7 @@ func (c *LLMClient) ClassifyBatchItems(items map[int]models.Item, strategy *mode
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.config.APIKey))
 
-	// 使用独立的 Client 进行批量请求，设置更长的超时时间
-	// 批量处理通常需要更长时间，我们设置为基础超时的 3 倍，且至少 60 秒
-	baseTimeout := c.config.GetTimeout()
-	batchTimeout := baseTimeout * 3
-	if batchTimeout < 60 {
-		batchTimeout = 60
-	}
-	
-	batchClient := &http.Client{
-		Timeout: time.Duration(batchTimeout) * time.Second,
-	}
-
-	resp, err := batchClient.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("发送请求失败: %w", err)
 	}
@@ -593,8 +581,7 @@ func ClassifyItems(items []models.Item, rssURL string) []models.Item {
 
 	// 3. AI 批量处理
 	// 每次批量处理的数量 (Batch Size)
-	// 可以根据模型限制调整，建议 5-10
-	const batchSize = 5
+	batchSize := config.GetBatchSize()
 	
 	// 计算需要的批次数量
 	numBatches := (len(pendingTasks) + batchSize - 1) / batchSize
@@ -635,19 +622,25 @@ func ClassifyItems(items []models.Item, rssURL string) []models.Item {
 				batchItemsMap[t.index] = t.item
 			}
 			
-			// 调用批量分类接口
+			// 分类
 			var resp *BatchClassifyResponse
 			var err error
 			
 			// 重试机制
-			const maxRetries = 3
+			maxRetries := config.GetRetryCount()
+			retryWait := time.Duration(config.GetRetryWait()) * time.Second
 			for attempt := 1; attempt <= maxRetries; attempt++ {
 				resp, err = client.ClassifyBatchItems(batchItemsMap, strategy, categories)
 				if err == nil {
 					break
 				}
 				if attempt < maxRetries {
-					time.Sleep(2 * time.Second)
+					retryType := "失败"
+					if strings.Contains(strings.ToLower(err.Error()), "timeout") || strings.Contains(err.Error(), "deadline exceeded") {
+						retryType = "超时"
+					}
+					log.Printf("[重试] 批量分类请求%s (第 %d/%d 次重试): %v", retryType, attempt, maxRetries-1, err)
+					time.Sleep(retryWait)
 				}
 			}
 			

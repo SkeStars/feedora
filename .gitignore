@@ -14,9 +14,17 @@
 # Project specific
 .reload
 
+# Go build artifacts
+/feedora
+
 # Data and Cache
 data/
 tmp/
+
+# SQLite database files
+*.db
+*.db-shm
+*.db-wal
 
 # Configuration (contains secrets like apiKey/password)
 # If you want to keep config.json in git, comment the line below
@@ -31,3 +39,4 @@ tmp/
 # OS files
 .DS_Store
 Thumbs.db
+

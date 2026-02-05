@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"fmt"
+	"io"
+	"net/http"
 	"github.com/fsnotify/fsnotify"
 	"github.com/mmcdole/gofeed"
 	"sync"
@@ -64,11 +66,7 @@ func UpdateFeeds() {
 
 		// 获取当前所有URL的刷新需求
 		for _, source := range globals.RssUrls.Sources {
-			if source.IsFolder() {
-				for _, feedUrl := range source.Urls {
-					processFeedUpdate(feedUrl.URL, feedUrl.RefreshCount, formattedTime, now, &nextGlobalUpdate)
-				}
-			} else if source.URL != "" {
+			if source.URL != "" {
 				processFeedUpdate(source.URL, source.RefreshCount, formattedTime, now, &nextGlobalUpdate)
 			}
 		}
@@ -150,19 +148,22 @@ func GetFaviconURL(rssURL string) string {
 	return ""
 }
 
+// ProxyIconURL 将原始图标 URL 包装为代理 URL
+func ProxyIconURL(originalURL string) string {
+	if originalURL == "" {
+		return ""
+	}
+	if strings.HasPrefix(originalURL, "/api/icon?url=") {
+		return originalURL
+	}
+	return "/api/icon?url=" + url.QueryEscape(originalURL)
+}
+
 // ShouldIgnoreOriginalPubDate 检查指定URL是否启用了忽略原始发布时间
 func ShouldIgnoreOriginalPubDate(rssURL string) bool {
 	for _, source := range globals.RssUrls.Sources {
 		if source.URL == rssURL {
 			return source.IgnoreOriginalPubDate
-		}
-		// 检查文件夹内的 URLs
-		if source.IsFolder() {
-			for _, feedUrl := range source.Urls {
-				if feedUrl.URL == rssURL {
-					return feedUrl.IgnoreOriginalPubDate
-				}
-			}
 		}
 	}
 	return false
@@ -174,14 +175,6 @@ func GetMaxItems(rssURL string) int {
 		if source.URL == rssURL {
 			return source.MaxItems
 		}
-		// 检查文件夹内的 URLs
-		if source.IsFolder() {
-			for _, feedUrl := range source.Urls {
-				if feedUrl.URL == rssURL {
-					return feedUrl.MaxItems
-				}
-			}
-		}
 	}
 	return 0
 }
@@ -192,6 +185,44 @@ func GetCustomIconURL(rssURL string, customIcon string) string {
 		return customIcon
 	}
 	return GetFaviconURL(rssURL)
+}
+
+// FetchAndCacheIcon 获取并缓存图标
+func FetchAndCacheIcon(iconURL string) ([]byte, string, error) {
+	// 尝试从数据库获取
+	data, mimeType, ok, err := DBGetIconCache(iconURL)
+	if err == nil && ok {
+		return data, mimeType, nil
+	}
+
+	// 从网络获取
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	resp, err := client.Get(iconURL)
+	if err != nil {
+		return nil, "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, "", fmt.Errorf("fetch icon failed: %s", resp.Status)
+	}
+
+	data, err = io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, "", err
+	}
+
+	mimeType = resp.Header.Get("Content-Type")
+	if mimeType == "" {
+		mimeType = "application/octet-stream"
+	}
+
+	// 存入数据库
+	_ = DBSaveIconCache(iconURL, data, mimeType)
+
+	return data, mimeType, nil
 }
 
 func UpdateFeed(url, formattedTime string, isManual bool) error {
@@ -275,6 +306,15 @@ func UpdateFeedWithOptions(url, formattedTime string, isManual bool, forceReproc
 			if isManual {
 				log.Printf("%s [无新内容] 源: %s | 内容与顺序均未发生变化", prefix, result.Title)
 			}
+
+			// 仅在重启后（标记为“已加载缓存”）且抓取成功时，才强制更新时间
+			globals.Lock.Lock()
+			if c, exists := globals.DbMap[url]; exists && c.Custom != nil && c.Custom["lastupdate"] == "已加载缓存" {
+				c.Custom["lastupdate"] = formattedTime
+				globals.DbMap[url] = c
+			}
+			globals.Lock.Unlock()
+
 			return nil
 		}
 
@@ -354,16 +394,27 @@ func UpdateFeedWithOptions(url, formattedTime string, isManual bool, forceReproc
 		allItems = allItems[:maxItems]
 	}
 
-	// 应用AI过滤
+	// 应用AI分类和过滤
 	originalCount := len(allItems)
 	filteredItems := allItems
 	passedLinks := make(map[string]bool)
 
 	if ShouldFilter(url) {
-		log.Printf("%s [开始过滤] 源: %s | 待处理条目: %d", prefix, result.Title, originalCount)
-		filteredItems = FilterItems(allItems, url)
+		log.Printf("%s [开始分类] 源: %s | 待处理条目: %d", prefix, result.Title, originalCount)
+		// 使用新的分类函数，它会同时处理分类和过滤
+		filteredItems = ClassifyItems(allItems, url)
 		for _, item := range filteredItems {
 			passedLinks[item.Link] = true
+		}
+		// 更新allItems中的分类信息
+		categoryMap := make(map[string]string)
+		for _, item := range filteredItems {
+			categoryMap[item.Link] = item.Category
+		}
+		for i := range allItems {
+			if cat, ok := categoryMap[allItems[i].Link]; ok {
+				allItems[i].Category = cat
+			}
 		}
 	} else {
 		// 如果不启用过滤，所有条目都视为通过
@@ -402,9 +453,10 @@ func UpdateFeedWithOptions(url, formattedTime string, isManual bool, forceReproc
 	}
 
 	// 应用条目缓存逻辑：将旧条目与新条目合并
+	// cacheItems: -1表示禁用缓存，0表示自动缓存所有过滤后的条目，>0表示缓存指定数量
 	cacheItems := GetCacheItems(url)
-	// 当仅设置了忽略原始发布时间而没有设置缓存条目时，自动使用当前获取到的条目数作为缓存数量
-	if cacheItems == 0 && ignoreOriginalPubDate {
+	if cacheItems == 0 {
+		// 0表示自动缓存所有过滤后的条目
 		cacheItems = len(filteredItems)
 	}
 	if cacheItems > 0 {
@@ -466,7 +518,7 @@ func UpdateFeedWithOptions(url, formattedTime string, isManual bool, forceReproc
 
 		// 清理 AI 过滤缓存（基于旧的 AllItemLinks）
 		if len(oldLinks) > 0 {
-			cleanupFilterCacheForSource(oldLinks, currentLinks)
+			cleanupClassifyCacheForSource(oldLinks, currentLinks)
 		}
 
 		// 清理后处理缓存
@@ -477,7 +529,7 @@ func UpdateFeedWithOptions(url, formattedTime string, isManual bool, forceReproc
 
 	// 确定最终展示的更新时间
 	lastUpdateTime := formattedTime
-	if !shouldUpdateDisplayTime && ok {
+	if !shouldUpdateDisplayTime && ok && cache.Custom["lastupdate"] != "已加载缓存" {
 		lastUpdateTime = cache.Custom["lastupdate"]
 	}
 
@@ -499,15 +551,15 @@ func UpdateFeedWithOptions(url, formattedTime string, isManual bool, forceReproc
 	return nil
 }
 
-// cleanupFilterCacheForSource 清理源中已不存在的条目的过滤缓存
-func cleanupFilterCacheForSource(oldLinks []string, newLinks map[string]bool) {
-	globals.FilterCacheLock.Lock()
-	defer globals.FilterCacheLock.Unlock()
+// cleanupClassifyCacheForSource 清理源中已不存在的条目的分类缓存
+func cleanupClassifyCacheForSource(oldLinks []string, newLinks map[string]bool) {
+	globals.ClassifyCacheLock.Lock()
+	defer globals.ClassifyCacheLock.Unlock()
 
 	for _, link := range oldLinks {
 		if !newLinks[link] {
-			// 该条目不再存在于新列表中，清理其过滤缓存
-			delete(globals.FilterCache, link)
+			// 该条目不再存在于新列表中，清理其分类缓存
+			delete(globals.ClassifyCache, link)
 		}
 	}
 }
@@ -575,203 +627,214 @@ func mergeWithCachedItems(url string, newItems []models.Item, cacheItems int) []
 
 // GetIconForURL 从配置中获取 URL 对应的自定义图标，如果没有则自动生成 favicon
 func GetIconForURL(rssURL string) string {
+	iconURL := ""
 	// 检查 sources 配置中是否有自定义图标
 	for _, source := range globals.RssUrls.Sources {
 		if source.URL == rssURL && source.Icon != "" {
-			return source.Icon
-		}
-		// 检查文件夹内的 URLs
-		if source.IsFolder() {
-			for _, feedURL := range source.Urls {
-				if feedURL.URL == rssURL && feedURL.Icon != "" {
-					return feedURL.Icon
-				}
-			}
+			iconURL = source.Icon
+			break
 		}
 	}
-	// 没有自定义图标，使用自动获取的 favicon
-	return GetFaviconURL(rssURL)
+	if iconURL == "" {
+		// 没有自定义图标，使用自动获取的 favicon
+		iconURL = GetFaviconURL(rssURL)
+	}
+	return ProxyIconURL(iconURL)
 }
 
 // GetIconForFeed 获取feed的图标，优先级：1.配置的自定义图标 2.RSS的image字段 3.自动生成favicon
 func GetIconForFeed(rssURL string, feed interface{}) string {
+	iconURL := ""
 	// 1. 先检查配置中是否有自定义图标
 	for _, source := range globals.RssUrls.Sources {
 		if source.URL == rssURL && source.Icon != "" {
-			return source.Icon
+			iconURL = source.Icon
+			break
 		}
-		// 检查文件夹内的 URLs
-		if source.IsFolder() {
-			for _, feedURL := range source.Urls {
-				if feedURL.URL == rssURL && feedURL.Icon != "" {
-					return feedURL.Icon
-				}
+	}
+
+	if iconURL == "" {
+		// 2. 尝试从RSS feed的image字段获取
+		if feedResult, ok := feed.(*gofeed.Feed); ok {
+			if feedResult.Image != nil && feedResult.Image.URL != "" {
+				iconURL = feedResult.Image.URL
 			}
 		}
 	}
 
-	// 2. 尝试从RSS feed的image字段获取
-	if feedResult, ok := feed.(*gofeed.Feed); ok {
-		if feedResult.Image != nil && feedResult.Image.URL != "" {
-			return feedResult.Image.URL
-		}
+	if iconURL == "" {
+		// 3. 最后使用自动获取的 favicon
+		iconURL = GetFaviconURL(rssURL)
 	}
 
-	// 3. 最后使用自动获取的 favicon
-	return GetFaviconURL(rssURL)
+	return ProxyIconURL(iconURL)
 }
 
-// GetFeeds 获取feeds列表，支持文件夹
+// GetFeeds 获取feeds列表，根据布局分组返回
 func GetFeeds() []models.Feed {
 	feeds := make([]models.Feed, 0)
 
-	for _, source := range globals.RssUrls.Sources {
-		// 获取分组名称，默认为"关注"
-		group := source.Group
-		if group == "" {
-			group = "关注"
-		}
-
-		if source.IsFolder() {
-			// 文件夹类型：聚合多个源
-			folderFeed := buildFolderFeed(source)
-			if folderFeed != nil {
-				folderFeed.Group = group
-				feeds = append(feeds, *folderFeed)
-			}
-		} else if source.URL != "" {
-			// 单个源
-			globals.Lock.RLock()
-			cache, ok := globals.DbMap[source.URL]
-			globals.Lock.RUnlock()
-			if !ok {
-				log.Printf("[数据读取跳过] 订阅源 %s 尚未就绪（可能正在抓取中）", source.URL)
-				// 返回空的Feed对象，展示卡片但内容为空
-				title := "加载失败"
-				if source.Name != "" {
-					title = source.Name
+	// 遍历所有分组布局
+	for _, layoutGroup := range globals.RssUrls.LayoutGroups {
+		// 遍历该分组中的所有布局项
+		for _, item := range layoutGroup.Items {
+			if item.Type == "source" && item.SourceURL != "" {
+				// 单个源
+				feed := buildSourceFeed(item.SourceURL, layoutGroup.Name)
+				if feed != nil {
+					feeds = append(feeds, *feed)
 				}
-				feeds = append(feeds, models.Feed{
-					Title:  title,
-					Link:   source.URL,
-					Icon:   source.Icon,
-					Custom: map[string]string{"lastupdate": "加载失败，请稍后重试"},
-					Items:  []models.Item{},
-					Group:  group,
-				})
-				continue
+			} else if item.Type == "folder" && item.FolderID != "" {
+				// 文件夹
+				folder := globals.RssUrls.GetFolderByID(item.FolderID)
+				if folder != nil {
+					feed := buildFolderFeed(*folder, layoutGroup.Name)
+					if feed != nil {
+						feeds = append(feeds, *feed)
+					}
+				}
 			}
-			// 支持自定义名称
-			if source.Name != "" {
-				cache.Title = source.Name
-			}
-			// 支持自定义图标
-			if source.Icon != "" {
-				cache.Icon = source.Icon
-			}
-			cache.Group = group
-			// 设置是否显示发布时间
-			cache.ShowPubDate = source.ShowPubDate
-			feeds = append(feeds, cache)
 		}
 	}
 
 	return feeds
 }
 
-// buildFolderFeed 构建文件夹Feed，聚合多个源的内容
-func buildFolderFeed(source models.FeedSource) *models.Feed {
-	if !source.IsFolder() {
+// buildSourceFeed 构建单个源的Feed
+func buildSourceFeed(sourceURL string, groupName string) *models.Feed {
+	source := globals.RssUrls.GetSourceByURL(sourceURL)
+	if source == nil {
 		return nil
 	}
 
-	folderFeed := &models.Feed{
-		Title:       source.Name,
-		Link:        "folder:" + source.Name,
-		Icon:        source.Icon, // 文件夹的自定义图标
-		IsFolder:    true,
-		Custom:      map[string]string{"lastupdate": "加载失败，请稍后重试"},
-		Items:       make([]models.Item, 0),
-		ShowPubDate: source.ShowPubDate, // 是否显示发布时间
+	globals.Lock.RLock()
+	cache, ok := globals.DbMap[source.URL]
+	globals.Lock.RUnlock()
+
+	if !ok {
+		// 返回空的Feed对象，展示卡片但内容为空
+		title := "加载中"
+		if source.Name != "" {
+			title = source.Name
+		}
+		return &models.Feed{
+			Title:  title,
+			Link:   source.URL,
+			Icon:   source.Icon,
+			Custom: map[string]string{"lastupdate": "加载中"},
+			Items:  []models.Item{},
+			Group:  groupName,
+		}
 	}
 
-	// 收集所有源的items
-	for _, feedUrl := range source.Urls {
-		globals.Lock.RLock()
-		cache, ok := globals.DbMap[feedUrl.URL]
-		globals.Lock.RUnlock()
-		if !ok {
-			log.Printf("[数据读取跳过] 子源 %s 尚未就绪", feedUrl.URL)
-			// 为文件夹添加一个提示项，表明某个源加载失败
-			sourceName := "未知源"
-			if feedUrl.Name != "" {
-				sourceName = feedUrl.Name
+	// 复制缓存以避免修改原始数据
+	result := cache
+	
+	// 支持自定义名称
+	if source.Name != "" {
+		result.Title = source.Name
+	}
+	// 支持自定义图标
+	if source.Icon != "" {
+		result.Icon = ProxyIconURL(source.Icon)
+	}
+	result.Group = groupName
+	// 设置是否显示发布时间
+	result.ShowPubDate = source.ShowPubDate
+	// 设置是否显示分类标签
+	result.ShowCategory = source.ShowCategory
+
+	return &result
+}
+
+// buildFolderFeed 构建文件夹Feed，聚合多个源的内容
+func buildFolderFeed(folder models.Folder, groupName string) *models.Feed {
+	icon := folder.Icon
+	if icon != "" {
+		icon = ProxyIconURL(icon)
+	} else if len(folder.Entries) > 0 {
+		firstEntry := folder.Entries[0]
+		if firstEntry.SourceURL != "" {
+			// 如果第一个是普通订阅源，使用该源的图标
+			source := globals.RssUrls.GetSourceByURL(firstEntry.SourceURL)
+			if source != nil {
+				globals.Lock.RLock()
+				if cache, ok := globals.DbMap[source.URL]; ok {
+					icon = cache.Icon
+				}
+				globals.Lock.RUnlock()
+
+				// 如果缓存中还没有，尝试获取默认图标
+				if icon == "" {
+					icon = GetIconForFeed(source.URL, nil)
+				}
 			}
-			folderFeed.Items = append(folderFeed.Items, models.Item{
-				Title:       "⚠️ " + sourceName + " 加载失败",
-				Link:        feedUrl.URL,
-				Description: "该订阅源暂时无法加载，请稍后重试",
-				Source:      sourceName,
-				PubDate:     "",
-			})
-			continue
+		}
+		// 如果第一个是分类包 (CategoryPackageId != "")，使用默认逻辑 (即保持为空，由前端或后续逻辑处理)
+	}
+
+	folderFeed := &models.Feed{
+		Title:       folder.Name,
+		Link:        "folder:" + folder.ID,
+		Icon:        icon,
+		IsFolder:    true,
+		Custom:      map[string]string{"lastupdate": "加载中"},
+		Items:       make([]models.Item, 0),
+		ShowPubDate:  folder.ShowPubDate,
+		ShowCategory: folder.ShowCategory,
+		ShowSource:   folder.ShowSource,
+		Group:        groupName,
+	}
+
+	// 遍历文件夹条目
+	for _, entry := range folder.Entries {
+		// 确定要过滤的类别列表
+		var categories []string
+		if len(entry.Categories) > 0 {
+			categories = entry.Categories
 		}
 
-		// 更新文件夹的最后更新时间为最新的源更新时间
-		// 只有当前文件夹时间是错误消息，或者新时间是有效时间戳且更新时才更新
-		currentTime := folderFeed.Custom["lastupdate"]
-		cacheTime := cache.Custom["lastupdate"]
+		// 确定是否隐藏源名称
+		hideSource := entry.HideSource
 
-		// 如果当前是错误消息，且缓存有有效时间，则使用缓存时间
-		if currentTime == "加载失败，请稍后重试" && cacheTime != "加载失败，请稍后重试" {
-			folderFeed.Custom["lastupdate"] = cacheTime
-		} else if currentTime != "加载失败，请稍后重试" && cacheTime != "加载失败，请稍后重试" && cacheTime > currentTime {
-			// 两者都是有效时间戳时，使用较新的
-			folderFeed.Custom["lastupdate"] = cacheTime
-		}
-
-		// 确定来源名称：只有设置了自定义名称时才添加Source标识
-		sourceName := ""
-		if feedUrl.Name != "" {
-			sourceName = feedUrl.Name
-		}
-
-		// 添加items，带上来源信息
-		for _, item := range cache.Items {
-			newItem := item
-			newItem.Source = sourceName
-			folderFeed.Items = append(folderFeed.Items, newItem)
+		if entry.CategoryPackageId != "" {
+			// 分类包条目 - 添加该分类包对应的所有订阅源
+			packageSources := globals.RssUrls.GetSourcesByPackageId(entry.CategoryPackageId)
+			for _, pkgSource := range packageSources {
+				addSourceItemsToFolder(folderFeed, pkgSource.URL, pkgSource.Name, categories, hideSource)
+			}
+		} else if entry.SourceURL != "" {
+			// 普通订阅源条目
+			source := globals.RssUrls.GetSourceByURL(entry.SourceURL)
+			sourceName := ""
+			if source != nil {
+				sourceName = source.Name
+			}
+			addSourceItemsToFolder(folderFeed, entry.SourceURL, sourceName, categories, hideSource)
 		}
 	}
 
-	// 先按发布时间倒序排列，确保较新的条目在前
-	// 对于没有时间戳的条目，将其排到后面
+	// 按发布时间倒序排列
 	sort.SliceStable(folderFeed.Items, func(i, j int) bool {
 		pubDateI := folderFeed.Items[i].PubDate
 		pubDateJ := folderFeed.Items[j].PubDate
 
-		// 如果两者都为空，保持原顺序
 		if pubDateI == "" && pubDateJ == "" {
 			return false
 		}
-		// 如果i为空，j不为空，i排后面
 		if pubDateI == "" {
 			return false
 		}
-		// 如果j为空，i不为空，i排前面
 		if pubDateJ == "" {
 			return true
 		}
-		// 两者都不为空，按时间倒序排列
 		return pubDateI > pubDateJ
 	})
 
-	// 根据标题去重，保留最新的条目
-	// 使用规范化的标题作为键，避免空格等细微差异导致的重复
+	// 根据标题去重
 	seenTitles := make(map[string]bool)
 	uniqueItems := make([]models.Item, 0, len(folderFeed.Items))
 	for _, item := range folderFeed.Items {
-		// 规范化标题：去除首尾空格
 		normalizedTitle := strings.TrimSpace(item.Title)
 		if normalizedTitle == "" {
 			continue
@@ -785,6 +848,66 @@ func buildFolderFeed(source models.FeedSource) *models.Feed {
 	folderFeed.Items = uniqueItems
 
 	return folderFeed
+}
+
+// addSourceItemsToFolder 将源的条目添加到文件夹中
+func addSourceItemsToFolder(folderFeed *models.Feed, sourceURL string, sourceName string, categoryFilters []string, hideSource bool) {
+	globals.Lock.RLock()
+	cache, ok := globals.DbMap[sourceURL]
+	globals.Lock.RUnlock()
+
+	if !ok {
+		// 源未就绪，添加提示项
+		name := sourceName
+		if name == "" {
+			name = "未知源"
+		}
+		folderFeed.Items = append(folderFeed.Items, models.Item{
+			Title:       "⚠️ " + name + " 加载失败",
+			Link:        sourceURL,
+			Description: "该订阅源暂时无法加载，请稍后重试",
+			Source:      name,
+			PubDate:     "",
+		})
+		return
+	}
+
+	// 更新文件夹的最后更新时间
+	currentTime := folderFeed.Custom["lastupdate"]
+	cacheTime := cache.Custom["lastupdate"]
+
+	if currentTime == "加载中" && cacheTime != "加载中" {
+		folderFeed.Custom["lastupdate"] = cacheTime
+	} else if currentTime != "加载中" && cacheTime != "加载中" && cacheTime > currentTime {
+		folderFeed.Custom["lastupdate"] = cacheTime
+	}
+
+	// 添加条目
+	for _, item := range cache.Items {
+		// 如果指定了类别过滤，只添加匹配的条目
+		// 类别留空表示忽略类别过滤（直接展示分类后的条目）
+		if len(categoryFilters) > 0 {
+			match := false
+			for _, filter := range categoryFilters {
+				if item.Category == filter {
+					match = true
+					break
+				}
+			}
+			if !match {
+				continue
+			}
+		}
+
+		newItem := item
+		if !hideSource {
+			newItem.Source = sourceName
+		} else {
+			newItem.Source = ""
+		}
+		
+		folderFeed.Items = append(folderFeed.Items, newItem)
+	}
 }
 
 func WatchConfigFileChanges(filePath string) {
@@ -898,102 +1021,74 @@ func WatchConfigFileChanges(filePath string) {
 	select {}
 }
 
-// RefreshSingleFeed 刷新单个源或文件夹内的所有源
+// RefreshSingleFeed 刷新单个源
 func RefreshSingleFeed(link string) error {
 	formattedTime := time.Now().Format("2006-01-02 15:04:05")
 	log.Printf("[手动刷新] 开始刷新: %s", link)
 
-	// 查找匹配的源
+	// 检查是否是文件夹链接
+	if strings.HasPrefix(link, "folder:") {
+		folderID := strings.TrimPrefix(link, "folder:")
+		folder := globals.RssUrls.GetFolderByID(folderID)
+		if folder == nil {
+			log.Printf("未找到文件夹: %s", folderID)
+			return fmt.Errorf("folder not found")
+		}
+
+		log.Printf("[手动刷新] 刷新文件夹 [%s] 中的所有源", folder.Name)
+		
+		// 收集需要刷新的源URL
+		urlsToRefresh := make([]string, 0)
+		for _, entry := range folder.Entries {
+			if entry.CategoryPackageId != "" {
+				// 分类包条目 - 添加该分类包对应的所有订阅源
+				for _, src := range globals.RssUrls.GetSourcesByPackageId(entry.CategoryPackageId) {
+					urlsToRefresh = append(urlsToRefresh, src.URL)
+				}
+			} else if entry.SourceURL != "" {
+				urlsToRefresh = append(urlsToRefresh, entry.SourceURL)
+			}
+		}
+
+		// 并发刷新所有源
+		var wg sync.WaitGroup
+		errChan := make(chan error, len(urlsToRefresh))
+		startTime := time.Now()
+
+		for _, url := range urlsToRefresh {
+			wg.Add(1)
+			go func(u string) {
+				defer wg.Done()
+				err := UpdateFeed(u, formattedTime, true)
+				if err != nil {
+					errChan <- err
+				}
+			}(url)
+		}
+		wg.Wait()
+		close(errChan)
+
+		errorCount := len(errChan)
+		duration := time.Since(startTime)
+		if errorCount > 0 {
+			log.Printf("[手动刷新] 文件夹 [%s] 刷新完成，耗时 %v，共有 %d/%d 个源失败", folder.Name, duration, errorCount, len(urlsToRefresh))
+		} else {
+			log.Printf("[手动刷新] 文件夹 [%s] 刷新成功，耗时 %v，共 %d 个源", folder.Name, duration, len(urlsToRefresh))
+		}
+		return nil
+	}
+
+	// 单个源刷新
 	for _, source := range globals.RssUrls.Sources {
-		if source.IsFolder() {
-			// 如果是文件夹，检查link是否匹配文件夹的name或任一子源
-			folderMatch := false
-			for _, feedUrl := range source.Urls {
-				if feedUrl.URL == link {
-					folderMatch = true
-					break
-				}
-			}
-
-			// 如果匹配到文件夹中的任一源，刷新整个文件夹
-			// 处理 link 格式，文件夹的 link 可能是 "folder:" + Name
-			isFolderLink := link == "folder:"+source.Name
-
-			if folderMatch || source.Name == link || isFolderLink {
-				log.Printf("[手动刷新] 确认匹配文件夹: %s", source.Name)
-				var wg sync.WaitGroup
-				errChan := make(chan error, len(source.Urls))
-
-				startTime := time.Now()
-				for _, feedUrl := range source.Urls {
-					wg.Add(1)
-					go func(url string) {
-						defer wg.Done()
-						// 带重试机制的更新
-						const maxRetries = 3
-						const retryDelay = 1 * time.Second
-
-						var lastErr error
-						for attempt := 1; attempt <= maxRetries; attempt++ {
-							lastErr = UpdateFeed(url, formattedTime, true)
-							if lastErr == nil {
-								break
-							}
-
-							if attempt < maxRetries {
-								log.Printf("[手动刷新重试] URL [%s]: 第 %d 次尝试失败: %v，%d秒后重试...",
-									url, attempt, lastErr, int(retryDelay.Seconds()))
-								time.Sleep(retryDelay)
-							}
-						}
-
-						if lastErr != nil {
-							log.Printf("[手动刷新失败] URL [%s]: 已重试 %d 次，最终失败: %v", url, maxRetries, lastErr)
-							errChan <- lastErr
-						}
-					}(feedUrl.URL)
-				}
-				wg.Wait()
-				close(errChan)
-
-				errorCount := len(errChan)
-				duration := time.Since(startTime)
-				if errorCount > 0 {
-					log.Printf("[手动刷新] 文件夹 [%s] 刷新完成，耗时 %v，共有 %d/%d 个源失败", source.Name, duration, errorCount, len(source.Urls))
-					// 如果全部失败才返回错误，部分失败认为刷新过程已完成
-					if errorCount == len(source.Urls) {
-						return fmt.Errorf("所有源刷新失败")
-					}
-				} else {
-					log.Printf("[手动刷新] 文件夹 [%s] 刷新成功，耗时 %v，共 %d 个源", source.Name, duration, len(source.Urls))
-				}
-				return nil
-			}
-		} else if source.URL == link {
-			// 单个源直接刷新（带重试机制）
+		if source.URL == link {
 			startTime := time.Now()
 			log.Printf("[手动刷新] 确认匹配单个源: %s", link)
 
-			const maxRetries = 3
-			const retryDelay = 1 * time.Second
-
-			var err error
-			for attempt := 1; attempt <= maxRetries; attempt++ {
-				err = UpdateFeed(source.URL, formattedTime, true)
-				if err == nil {
-					break
-				}
-
-				if attempt < maxRetries {
-					log.Printf("[手动刷新重试] 源 [%s]: 第 %d 次尝试失败: %v，%d秒后重试...",
-						link, attempt, err, int(retryDelay.Seconds()))
-					time.Sleep(retryDelay)
-				}
-			}
+			err := UpdateFeed(source.URL, formattedTime, true)
 
 			duration := time.Since(startTime)
 			if err != nil {
-				log.Printf("[手动刷新失败] 单个源 [%s]: 已重试 %d 次，最终失败，耗时 %v: %v", link, maxRetries, duration, err)
+				log.Printf("[手动刷新失败] 单个源 [%s] 刷新失败，耗时 %v: %v", link, duration, err)
 			} else {
 				log.Printf("[手动刷新] 单个源 [%s] 刷新完成，耗时 %v", link, duration)
 			}
@@ -1012,23 +1107,7 @@ func RefreshSingleFeedForce(link string) error {
 
 	// 查找匹配的源
 	for _, source := range globals.RssUrls.Sources {
-		if source.IsFolder() {
-			// 检查是否匹配文件夹内的源
-			for _, feedUrl := range source.Urls {
-				if feedUrl.URL == link {
-					startTime := time.Now()
-					err := UpdateFeedWithOptions(link, formattedTime, true, true)
-					duration := time.Since(startTime)
-					if err != nil {
-						log.Printf("[强制重处理] 源 [%s] 刷新失败，耗时 %v: %v", link, duration, err)
-					} else {
-						log.Printf("[强制重处理] 源 [%s] 刷新完成，耗时 %v", link, duration)
-					}
-					return err
-				}
-			}
-		} else if source.URL == link {
-			// 单个源直接刷新
+		if source.URL == link {
 			startTime := time.Now()
 			err := UpdateFeedWithOptions(link, formattedTime, true, true)
 			duration := time.Since(startTime)
@@ -1069,18 +1148,11 @@ func ClearFeedCacheForPostProcessSources() {
 func collectAffectedUrls(oldConfig, newConfig models.Config) map[string]bool {
 	affectedUrls := make(map[string]bool)
 
-	// 创建新旧配置的源映射
-	oldSources := make(map[string]*models.FeedSource)
-	oldFeedUrls := make(map[string]*models.FeedURL)
-
+	// 创建旧配置的源映射
+	oldSources := make(map[string]*models.Source)
 	for i := range oldConfig.Sources {
 		source := &oldConfig.Sources[i]
-		if source.IsFolder() {
-			for j := range source.Urls {
-				feedUrl := &source.Urls[j]
-				oldFeedUrls[feedUrl.URL] = feedUrl
-			}
-		} else if source.URL != "" {
+		if source.URL != "" {
 			oldSources[source.URL] = source
 		}
 	}
@@ -1088,15 +1160,7 @@ func collectAffectedUrls(oldConfig, newConfig models.Config) map[string]bool {
 	// 检查新配置中的每个源
 	for i := range newConfig.Sources {
 		source := &newConfig.Sources[i]
-		if source.IsFolder() {
-			for j := range source.Urls {
-				feedUrl := &source.Urls[j]
-				// 检查是否是新增的源或配置发生了变化
-				if oldFeedUrl, exists := oldFeedUrls[feedUrl.URL]; !exists || feedUrlChanged(oldFeedUrl, feedUrl) {
-					affectedUrls[feedUrl.URL] = true
-				}
-			}
-		} else if source.URL != "" {
+		if source.URL != "" {
 			// 检查是否是新增的源或配置发生了变化
 			if oldSource, exists := oldSources[source.URL]; !exists || sourceChanged(oldSource, source) {
 				affectedUrls[source.URL] = true
@@ -1108,7 +1172,7 @@ func collectAffectedUrls(oldConfig, newConfig models.Config) map[string]bool {
 }
 
 // sourceChanged 检查源配置是否发生了变化
-func sourceChanged(old, new *models.FeedSource) bool {
+func sourceChanged(old, new *models.Source) bool {
 	// 检查影响数据获取或处理的关键配置
 	if old.MaxItems != new.MaxItems ||
 		old.CacheItems != new.CacheItems ||
@@ -1116,8 +1180,8 @@ func sourceChanged(old, new *models.FeedSource) bool {
 		return true
 	}
 
-	// 检查过滤配置是否变化
-	if filterChanged(old.Filter, new.Filter) {
+	// 检查分类配置是否变化
+	if classifyChanged(old.Classify, new.Classify) {
 		return true
 	}
 
@@ -1129,30 +1193,8 @@ func sourceChanged(old, new *models.FeedSource) bool {
 	return false
 }
 
-// feedUrlChanged 检查文件夹内的源配置是否发生了变化
-func feedUrlChanged(old, new *models.FeedURL) bool {
-	// 检查影响数据获取或处理的关键配置
-	if old.MaxItems != new.MaxItems ||
-		old.CacheItems != new.CacheItems ||
-		old.IgnoreOriginalPubDate != new.IgnoreOriginalPubDate {
-		return true
-	}
-
-	// 检查过滤配置是否变化
-	if filterChanged(old.Filter, new.Filter) {
-		return true
-	}
-
-	// 检查后处理配置是否变化
-	if postProcessChanged(old.PostProcess, new.PostProcess) {
-		return true
-	}
-
-	return false
-}
-
-// filterChanged 检查过滤配置是否变化
-func filterChanged(old, new *models.FilterStrategy) bool {
+// classifyChanged 检查分类配置是否变化
+func classifyChanged(old, new *models.ClassifyStrategy) bool {
 	if (old == nil) != (new == nil) {
 		return true
 	}
@@ -1194,17 +1236,6 @@ func filterChanged(old, new *models.FilterStrategy) bool {
 
 	// 比较 ScriptFilterContent 字段
 	if old.ScriptFilterContent != new.ScriptFilterContent {
-		return true
-	}
-
-	if (old.Threshold == nil) != (new.Threshold == nil) {
-		return true
-	}
-	if old.Threshold != nil && new.Threshold != nil && *old.Threshold != *new.Threshold {
-		return true
-	}
-
-	if old.CustomPrompt != new.CustomPrompt {
 		return true
 	}
 

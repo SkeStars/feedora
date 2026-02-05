@@ -54,8 +54,8 @@ func PostProcessItems(items []models.Item, rssURL string) []models.Item {
 	log.Printf("[后处理开始] 源 [%s] | 模式: %s | 待处理: %d 条 | 修改字段: %s",
 		rssURL, mode, len(items), strings.Join(modifyFields, ", "))
 
-	// 获取并发数（复用AI过滤的并发配置）
-	concurrency := globals.RssUrls.AIFilter.GetConcurrency()
+	// 获取并发数（复用AI分类的并发配置）
+	concurrency := globals.RssUrls.AIClassify.GetConcurrency()
 	if concurrency > len(items) {
 		concurrency = len(items)
 	}
@@ -245,16 +245,6 @@ func getPostProcessConfig(rssURL string) *models.PostProcessConfig {
 		if source.URL == rssURL {
 			return source.PostProcess
 		}
-		if source.IsFolder() {
-			for _, feedURL := range source.Urls {
-				if feedURL.URL == rssURL {
-					if feedURL.PostProcess != nil {
-						return feedURL.PostProcess
-					}
-					return source.PostProcess
-				}
-			}
-		}
 	}
 	return nil
 }
@@ -267,7 +257,7 @@ func ShouldPostProcess(rssURL string) bool {
 
 // processItemWithAI 使用AI处理条目
 func processItemWithAI(item models.Item, config *models.PostProcessConfig) (models.Item, error) {
-	aiConfig := globals.RssUrls.AIFilter
+	aiConfig := globals.RssUrls.AIClassify
 	if aiConfig.APIKey == "" {
 		return item, fmt.Errorf("AI API Key未配置")
 	}
@@ -294,9 +284,13 @@ func processItemWithAI(item models.Item, config *models.PostProcessConfig) (mode
 		},
 		Temperature: aiConfig.GetTemperature(),
 		MaxTokens:   aiConfig.GetMaxTokens(),
-		ResponseFormat: &ResponseFormat{
+	}
+
+	// 某些 API (如 OpenAI, Ark) 要求开启 json_object 时，提示词中必须包含 "json" 字样
+	if strings.Contains(strings.ToLower(prompt), "json") || strings.Contains(strings.ToLower(string(itemJSON)), "json") {
+		reqBody.ResponseFormat = &ResponseFormat{
 			Type: "json_object",
-		},
+		}
 	}
 
 	jsonData, err := json.Marshal(reqBody)
@@ -368,7 +362,7 @@ func processItemWithAI(item models.Item, config *models.PostProcessConfig) (mode
 // processItemWithScript 使用脚本处理条目
 func processItemWithScript(item models.Item, config *models.PostProcessConfig) (models.Item, error) {
 	// 创建超时 context（复用 AI 的超时配置）
-	timeout := time.Duration(globals.RssUrls.AIFilter.GetTimeout()) * time.Second
+	timeout := time.Duration(globals.RssUrls.AIClassify.GetTimeout()) * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 

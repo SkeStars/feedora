@@ -6,6 +6,12 @@ WORKDIR /src
 #RUN go env -w GO111MODULE=on && \
 #    go env -w GOPROXY=https://goproxy.cn,direct
 
+# 安装编译工具 (SQLite 驱动需要 CGO)
+RUN apk add --no-cache gcc musl-dev
+
+# 启用 CGO
+ENV CGO_ENABLED=1
+
 # 先拷贝模块定义文件并下载依赖，充分利用 Docker 缓存
 COPY go.mod go.sum ./
 RUN go mod download
@@ -26,6 +32,6 @@ WORKDIR /app
 COPY --from=builder /src/bin/feedora /app/feedora
 COPY --from=builder /src/config.json /app/config.json
 
-EXPOSE 8080
+EXPOSE 8081
 
 ENTRYPOINT ["./feedora"]

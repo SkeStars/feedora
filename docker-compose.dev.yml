@@ -6,7 +6,7 @@ services:
     image: feedora:dev
     container_name: feedora-dev
     ports:
-      - "8080:8080"
+      - "8081:8081"
     volumes:
       - .:/app
       # 避免把本地的 bin 或 tmp 挂载进容器干扰

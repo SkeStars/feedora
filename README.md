@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  一个功能强大的现代化 RSS 在线WEB阅读器，融合文件夹聚合、自动化内容处理（AI）、实时推送等特性。<br/>
+  一个功能强大的现代化 RSS 在线WEB阅读器，融合文件夹聚合、自动化内容处理（AI分类）、实时推送等特性。<br/>
   专为信息过载时代打造，助你高效获取真正有价值的内容。
 </p>
 
@@ -32,7 +32,8 @@
 ### 🤖 智能过滤增强
 - **关键词过滤** - 支持黑名单/白名单模式，精准控制内容
 - **脚本过滤** - 通过 Bash/Shell 脚本实现高度自定义的过滤逻辑
-- **AI内容过滤** - 基于大语言模型的智能分类，自动过滤低质内容、广告和推广文章
+- **AI内容分类** - 基于大语言模型的智能分类，自动标签归类并过滤低质内容、广告和推广文章
+- **分类包管理** - 支持自定义分类类别体系，灵活组织内容
 - **后处理增强** - AI/脚本 自动优化标题、提取链接
 - **多 AI 平台支持** - 兼容 OpenAI、DeepSeek、豆包、智谱 AI、Ollama 等
 
@@ -89,7 +90,7 @@ cd feedora
 docker-compose up -d --build
 ```
 
-服务将在 `http://localhost:8080` 启动。
+服务将在 `http://localhost:8081` 启动。
 
 ### 开发模式
 
@@ -129,19 +130,21 @@ touch .reload
 有两种方式：
 1. **可视化添加**：登录管理后台 → 点击"添加订阅源" → 填写信息 → 保存
 2. **手动编辑**：编辑 `config.json` 文件 → 在 `sources` 数组中添加新源 → 保存（自动生效）
+
 推荐 [DIYgod/RssHub](https://github.com/DIYgod/RssHub)、[decemberpei/Rss](https://github.com/decemberpei/Rss) 用于查找 RSS 源。
 
 </details>
 
 <details>
-<summary><b>Q: AI 过滤不生效怎么办？</b></summary>
+<summary><b>Q: AI 分类不生效怎么办？</b></summary>
 
 检查以下几点：
-1. 确认 `aiFilter.enabled` 为 `true`
-2. 检查 API Key 是否正确
-3. 确认 API Base URL 与所用平台匹配
-4. 查看 Docker 日志：`docker-compose logs -f`
-5. 尝试清除缓存后重新抓取
+1. 确认 `aiClassify.enabled` 为 `true`（全局开关）
+2. 确认订阅源的 `classify.aiEnabled` 为 `true`（单源开关）
+3. 检查 API Key 是否正确
+4. 确认 API Base URL 与所用平台匹配
+5. 查看 Docker 日志：`docker-compose logs -f`
+6. 尝试清除缓存后重新抓取
 
 </details>
 
@@ -174,7 +177,7 @@ docker-compose restart
 编辑 `docker-compose.yml`：
 ```yaml
 ports:
-  - "8888:8080"  # 外部端口:内部端口
+  - "8888:8081"  # 外部端口:内部端口(8081)
 ```
 然后重启：`docker-compose up -d`
 
@@ -191,78 +194,70 @@ ports:
 
 ```json
 {
-  "sources":[],
+  "sources": [],
+  "folders": [],
+  "layoutGroups": [],
   "schedules": [],
-  "aiFilter": {},
+  "aiClassify": {},
   "password": "1234",
   "sessionDuration": 720,
   "nightStartTime": "22:00:00",
   "nightEndTime": "07:00:00",
   "darkMode": false,
-  "groupOrder": ["科技", "资讯", "博客"],
-  "defaultGroup": "科技"
+  "defaultGroup": "group_id",
+  "categories": []
 }
 ```
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `sources` | array | ✓ | RSS 订阅源列表 |
+| `folders` | array | - | 文件夹配置列表（用于聚合多个源或分类） |
+| `layoutGroups` | array | - | 分组布局配置（定义顶栏分组及其内容） |
 | `schedules` | array | - | 抓取计划规则（可设置分时段刷新频率） |
-| `aiFilter` | object | - | 全局 AI 配置 |
+| `aiClassify` | object | - | 全局 AI 分类配置 |
 | `password` | string | - | 管理后台密码（留空则无需密码） |
-| `sessionDuration` | number | - | 登录会话有效期（小时），默认 720 |
+| `sessionDuration` | number | - | 登录会话有效期（小时），默认 24 |
 | `nightStartTime` | string | - | 夜间模式开始时间（HH:mm:ss） |
 | `nightEndTime` | string | - | 夜间模式结束时间（HH:mm:ss） |
 | `darkMode` | boolean | - | 手动开启深色模式（覆盖自动模式） |
-| `groupOrder` | array | - | 顶栏分组排序 |
-| `defaultGroup` | string | - | 默认显示的分组名称 |
+| `defaultGroup` | string | - | 默认显示的分组ID |
+| `categories` | array | - | 全局分类类别列表 |
 
 
 ### 订阅源配置 (sources)
 
-示例 1：单源配置
+**单源配置示例：**
 
 ```json
 {
-  "name": "技术博客",
   "url": "https://example.com/feed.xml",
-  "icon": "https://example.com/favicon.ico"
+  "name": "技术博客",
+  "icon": "https://example.com/favicon.ico",
+  "refreshCount": 1,
+  "cacheItems": 30,
+  "showPubDate": true,
+  "classify": {
+    "aiEnabled": true,
+    "boundCategories": ["tech", "programming"]
+  }
 }
 ```
 
-示例 2：文件夹配置
-
-```json
-{
-  "name": "科技媒体聚合",
-  "icon": "https://example.com/tech-icon.png",
-  "urls": [
-    {
-      "url": "https://techcrunch.com/feed/",
-      "name": "TechCrunch"
-    },
-    {
-      "url": "https://www.wired.com/feed/rss",
-      "name": "Wired"
-    }
-  ]
-}
-```
 每个订阅源支持以下配置：
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `url` | string | ✓ | RSS 订阅链接（单源模式必填） |
-| `urls` | array | - | 子源列表（文件夹模式使用） |
+| `url` | string | ✓ | RSS 订阅链接 |
 | `name` | string | - | 订阅源名称 |
 | `icon` | string | - | 自定义图标 URL |
-| `group` | string | - | 所属分组名称 |
 | `refreshCount` | number | - | 刷新倍率（实际间隔 = 基础间隔 × 倍率） |
 | `maxItems` | number | - | 每次解析的最大条目数（0 为不限制） |
-| `cacheItems` | number | - | 持久化缓存数量 |
-| `ignoreOriginalPubDate` | boolean | - | 使用首次抓取时间排序 |
-| `showPubDate` | boolean | - | 是否显示发布时间 |
-| `filter` | object | - | 过滤规则配置 |
+| `cacheItems` | number | - | 持久化缓存数量（0=全部缓存，-1=禁用缓存） |
+| `ignoreOriginalPubDate` | boolean | - | 使用首次抓取时间代替原始发布时间 |
+| `showPubDate` | boolean | - | 是否在条目后显示发布时间 |
+| `showCategory` | boolean | - | 是否显示分类标签 |
+| `classify` | object | - | 分类策略配置（替代原 filter） |
 | `postProcess` | object | - | 后处理配置 |
 
 ### 抓取计划 (schedules)
@@ -300,39 +295,136 @@ ports:
 实际间隔 = baseRefresh × (sources[i].refreshCount || defaultCount)
 ```
 
-### 全局 AI 配置 (aiFilter)
+### 文件夹配置 (folders)
 
-全局 AI 配置示例：
+文件夹用于聚合多个订阅源或特定分类的内容：
 
 ```json
 {
-  "aiFilter": {
+  "id": "folder_1770217654627",
+  "name": "科技聚合",
+  "icon": "https://example.com/tech-icon.png",
+  "showPubDate": true,
+  "showCategory": true,
+  "showSource": true,
+  "entries": [
+    {
+      "sourceUrl": "https://techcrunch.com/feed/",
+      "categories": ["tech", "startup"]
+    },
+    {
+      "sourceUrl": "https://wired.com/feed/",
+      "hideSource": true
+    },
+    {
+      "categoryPackageId": "package_tech"
+    }
+  ]
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | string | 文件夹唯一标识（自动生成） |
+| `name` | string | 文件夹名称 |
+| `icon` | string | 自定义图标 URL |
+| `entries` | array | 文件夹包含的条目列表 |
+| `showPubDate` | boolean | 是否显示发布时间 |
+| `showCategory` | boolean | 是否显示分类标签 |
+| `showSource` | boolean | 是否显示源名称标签 |
+
+**条目配置 (FolderEntry)：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `sourceUrl` | string | 订阅源URL（普通条目） |
+| `categoryPackageId` | string | 分类包ID（包含该包所有相关源） |
+| `categories` | array | 绑定的类别ID列表（多选筛选） |
+| `hideSource` | boolean | 是否隐藏源名称（默认显示） |
+
+### 分组布局配置 (layoutGroups)
+
+定义顶栏分组及其显示内容：
+
+```json
+{
+  "id": "group_1770216857950",
+  "name": "关注",
+  "items": [
+    {
+      "type": "source",
+      "sourceUrl": "https://example.com/feed.xml"
+    },
+    {
+      "type": "folder",
+      "folderId": "folder_1770217654627"
+    }
+  ]
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | string | 分组唯一标识 |
+| `name` | string | 分组名称（显示在顶栏） |
+| `items` | array | 布局项列表（按顺序显示） |
+
+**布局项配置 (LayoutItem)：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `type` | string | 类型："source" 或 "folder" |
+| `sourceUrl` | string | 订阅源URL（type为source时） |
+| `folderId` | string | 文件夹ID（type为folder时） |
+
+### 全局 AI 分类配置 (aiClassify)
+
+AI分类配置示例：
+
+```json
+{
+  "aiClassify": {
     "enabled": true,
     "apiKey": "your-api-key-here",
     "apiBase": "https://ark.cn-beijing.volces.com/api/v3",
-    "model": "doubao-seed-1-8-251228",
-    "systemPrompt": "你是一个严格的内容分类器。判断给定的RSS文章是否为推广内容、软文、低质内容等。返回JSON格式：{\"is_filtered\": boolean, \"confidence\": 0-1之间的浮点数, \"reason\": \"过滤原因\"}",
-    "threshold": 0.7,
+    "model": "doubao-seed-1.8",
+    "systemPrompt": "你是一个内容分类助手，根据给定的类别对RSS文章进行分类。",
     "maxTokens": 500,
     "temperature": 0.1,
     "timeout": 30,
-    "concurrency": 5
+    "concurrency": 5,
+    "maxDescLength": 2000,
+    "categoryPackages": [
+      {
+        "id": "package_tech",
+        "name": "科技类别包",
+        "categories": [
+          {
+            "id": "tech",
+            "name": "科技",
+            "description": "技术、科技相关内容",
+            "color": "#4CAF50"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
 
 | 字段 | 说明 | 默认值 |
 |------|------|--------|
-| `enabled` | 是否全局启用 AI 过滤 | `false` |
+| `enabled` | 是否全局启用 AI 分类 | `false` |
 | `apiKey` | API 密钥 | - |
 | `apiBase` | API 端点（兼容 OpenAI 格式） | 火山引擎 |
-| `model` | 模型名称 | - |
+| `model` | 模型名称 | `doubao-seed-1.8` |
 | `systemPrompt` | 系统提示词 | - |
-| `threshold` | 过滤阈值（0-1），超过此置信度才过滤 | `0.7` |
 | `maxTokens` | 最大 token 数 | `500` |
 | `temperature` | 温度参数 | `0.1` |
 | `timeout` | 请求超时时间（秒） | `30` |
-| `concurrency` | 并发请求数 | `3` |
+| `concurrency` | 并发请求数 | `5` |
+| `maxDescLength` | 发送给AI的描述最大长度 | `2000` |
+| `categoryPackages` | 分类类别包列表 | `[]` |
 
 **支持的 AI 平台：**
 - OpenAI
@@ -342,13 +434,13 @@ ports:
 - 智谱 AI
 - Ollama（本地部署）
 
-### 过滤规则 (filter)
+### 分类策略配置 (classify)
 
 支持关键词、脚本、AI三种过滤方式，可组合使用：
 
 ```json
 {
-  "filter": {
+  "classify": {
     "keywordEnabled": true,
     "filterKeywords": ["广告", "推广", "赞助"],
     "keepKeywords": ["开源", "技术"],
@@ -358,7 +450,9 @@ ports:
     "scriptFilterContent": "jq '[.[] | select(.title | contains(\"特定词\"))]'",
 
     "aiEnabled": true,
-    "threshold": 0.8,
+    "boundCategories": ["tech", "programming"],
+    "categoryBlacklist": ["ads"],
+    "categoryWhitelist": ["tech"],
     "customPrompt": "..."
   }
 }
@@ -370,8 +464,10 @@ ports:
 | `filterKeywords` | array | 黑名单关键词（匹配则过滤） |
 | `keepKeywords` | array | 白名单关键词（匹配则保留，优先级高） |
 | `whitelistMode` | boolean | 严格白名单模式（仅保留匹配白名单的） |
-| `aiEnabled` | boolean | 对该源启用 AI 过滤 |
-| `threshold` | number | 该源的 AI 过滤阈值 |
+| `aiEnabled` | boolean | 对该源启用 AI 分类 |
+| `boundCategories` | array | 绑定的类别ID列表（发送给AI时仅包含这些类别） |
+| `categoryBlacklist` | array | 类别黑名单（这些类别的文章将被过滤） |
+| `categoryWhitelist` | array | 类别白名单（仅保留这些类别，优先级高于黑名单） |
 | `customPrompt` | string | 自定义 AI 提示词（覆盖全局） |
 | `scriptFilterEnabled` | boolean | 启用脚本过滤 |
 | `scriptFilterContent` | string | Bash 脚本内容 |
@@ -384,7 +480,7 @@ ports:
 {
   "postProcess": {
     "enabled": true,
-    "mode": "llm",
+    "mode": "ai",
     "prompt": "请为这篇文章生成50字以内的精简摘要",
     "modifyTitle": false,
     "modifyLink": false,
@@ -393,10 +489,10 @@ ports:
 }
 ```
 
-**LLM 模式：**
+**AI 模式：**
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `mode` | string | 设置为 `"llm"` |
+| `mode` | string | 设置为 `"ai"` |
 | `prompt` | string | AI 处理提示词 |
 | `modifyTitle` | boolean | 是否允许修改标题 |
 | `modifyLink` | boolean | 是否允许修改链接 |
@@ -406,7 +502,7 @@ ports:
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `mode` | string | 设置为 `"script"` |
-| `scriptContent` | string | 内联 Bash 脚本 |
+| `scriptContent` | string | 内联 Bash 脚本（优先级高于 scriptPath） |
 | `scriptPath` | string | 外部脚本文件路径 |
 
 **脚本示例（提取微信公众号原文链接）：**
@@ -528,7 +624,7 @@ server {
     
     # 主应用
     location / {
-        proxy_pass http://localhost:8080;
+        proxy_pass http://localhost:8081;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -537,7 +633,7 @@ server {
     
     # WebSocket 支持
     location /ws {
-        proxy_pass http://localhost:8080/ws;
+        proxy_pass http://localhost:8081/ws;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "Upgrade";
@@ -585,9 +681,9 @@ feedora/
 └── data/               # 数据存储目录
     ├── read_state.json         # 已读状态
     ├── items_cache.json        # 条目缓存
+    ├── classify_cache.json     # 分类缓存
     ├── filter_cache.json       # 过滤缓存
-    ├── postprocess_cache.json  # 后处理缓存
-    └── ranking_timestamps.json # 热榜时间戳
+    └── postprocess_cache.json  # 后处理缓存
 ```
 
 ---

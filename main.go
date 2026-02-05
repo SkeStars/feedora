@@ -52,11 +52,12 @@ func main() {
 	http.HandleFunc("/api/get-config", getConfigHandler)
 	http.HandleFunc("/api/save-config", saveConfigHandler)
 	http.HandleFunc("/api/clear-cache", clearCacheHandler)
+	http.HandleFunc("/api/icon", iconHandler)
 
 	//加载静态文件
 	fs := http.FileServer(http.FS(globals.DirStatic))
 	http.Handle("/static/", fs)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8081", nil))
 }
 
 // handleShutdown 处理优雅关闭
@@ -118,13 +119,15 @@ func tplHandler(w http.ResponseWriter, r *http.Request) {
 		Groups         []string
 		DefaultGroup   string
 		NextUpdateTime string
+		Categories     []models.Category
 	}{
 		Keywords:       getKeywordsFromFeeds(allFeeds),
 		RssDataList:    allFeeds,
 		DarkMode:       darkMode,
 		Groups:         getGroups(allFeeds),
-		DefaultGroup:   globals.RssUrls.DefaultGroup,
+		DefaultGroup:   globals.RssUrls.GetDefaultGroupName(),
 		NextUpdateTime: nextUpdate.Format(time.RFC3339),
+		Categories:     globals.RssUrls.AIClassify.GetCategories(&globals.RssUrls),
 	}
 
 	// 渲染模板并将结果写入响应
@@ -190,70 +193,8 @@ func getFeedsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getGroups(feeds []models.Feed) []string {
-	// 优先使用配置中的 GroupOrder
-	if len(globals.RssUrls.GroupOrder) > 0 {
-		// 收集所有实际存在的分组
-		existingGroups := make(map[string]struct{})
-		for _, source := range globals.RssUrls.Sources {
-			group := source.Group
-			if group == "" {
-				group = "关注"
-			}
-			existingGroups[group] = struct{}{}
-		}
-		
-		// 按照 GroupOrder 顺序返回，只保留实际存在的分组
-		result := make([]string, 0)
-		for _, g := range globals.RssUrls.GroupOrder {
-			if _, exists := existingGroups[g]; exists {
-				result = append(result, g)
-				delete(existingGroups, g)
-			}
-		}
-		// 添加未在 GroupOrder 中的分组
-		for g := range existingGroups {
-			result = append(result, g)
-		}
-		if len(result) == 0 {
-			result = append(result, "关注")
-		}
-		return result
-	}
-	
-	// 使用配置中订阅源的分组顺序
-	groupSet := make(map[string]struct{})
-	groups := make([]string, 0)
-	
-	// 从配置中获取分组顺序
-	for _, source := range globals.RssUrls.Sources {
-		group := source.Group
-		if group == "" {
-			group = "关注"
-		}
-		if _, exists := groupSet[group]; !exists {
-			groupSet[group] = struct{}{}
-			groups = append(groups, group)
-		}
-	}
-	
-	// 确保有 feeds 数据时也检查（兼容性）
-	for _, feed := range feeds {
-		group := feed.Group
-		if group == "" {
-			group = "关注"
-		}
-		if _, exists := groupSet[group]; !exists {
-			groupSet[group] = struct{}{}
-			groups = append(groups, group)
-		}
-	}
-	
-	// 如果没有任何分组，返回默认的"关注"
-	if len(groups) == 0 {
-		groups = append(groups, "关注")
-	}
-	
-	return groups
+	// 使用配置中的 LayoutGroups 获取分组列表
+	return globals.RssUrls.GetGroups()
 }
 
 // readStateHandler 获取已读状态
@@ -528,12 +469,12 @@ func clearCacheHandler(w http.ResponseWriter, r *http.Request) {
 
 	cleared := 0
 	switch req.Type {
-	case "filter":
-		cleared = utils.ClearFilterCacheForSource(req.URL)
+	case "classify":
+		cleared = utils.ClearClassifyCacheForSource(req.URL)
 	case "postprocess":
 		cleared = utils.ClearPostProcessCacheForSource(req.URL)
 	default:
-		http.Error(w, "Invalid type, must be 'filter' or 'postprocess'", http.StatusBadRequest)
+		http.Error(w, "Invalid type, must be 'classify' or 'postprocess'", http.StatusBadRequest)
 		return
 	}
 
@@ -551,5 +492,24 @@ func clearCacheHandler(w http.ResponseWriter, r *http.Request) {
 		"success": true,
 		"cleared": cleared,
 	})
+}
+
+func iconHandler(w http.ResponseWriter, r *http.Request) {
+	iconURL := r.URL.Query().Get("url")
+	if iconURL == "" {
+		http.Error(w, "missing url", http.StatusBadRequest)
+		return
+	}
+
+	data, mimeType, err := utils.FetchAndCacheIcon(iconURL)
+	if err != nil {
+		// 如果代理下载失败，直接重定向到原始 URL，让浏览器尝试直接加载
+		http.Redirect(w, r, iconURL, http.StatusTemporaryRedirect)
+		return
+	}
+
+	w.Header().Set("Content-Type", mimeType)
+	w.Header().Set("Cache-Control", "public, max-age=86400") // 缓存 1 天
+	w.Write(data)
 }
 

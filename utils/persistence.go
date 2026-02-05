@@ -13,32 +13,17 @@ import (
 )
 
 const (
-	// 持久化数据目录
-	DataDir = "/app/data"
-	// 过滤缓存文件
-	FilterCacheFile = DataDir + "/filter_cache.json"
-	// 已读状态文件（预留）
-	ReadStateFile = DataDir + "/read_state.json"
-	// 后处理缓存文件
-	PostProcessCacheFile = DataDir + "/postprocess_cache.json"
-	// 条目缓存文件
-	ItemsCacheFile = DataDir + "/items_cache.json"
-	// 保存间隔（秒）
+	// 保存间隔（秒）- 用于定期同步内存到数据库
 	SaveInterval = 60
 	// 清理间隔（小时）
 	CleanupInterval = 6
 )
 
-// PersistentData 持久化数据结构
-type PersistentData struct {
-	// FilterCache 过滤结果缓存
-	FilterCache map[string]models.FilterCacheEntry `json:"filterCache"`
-	// 保存时间
-	SavedAt string `json:"savedAt"`
-}
-
 var (
-	// PostProcessCache 后处理结果缓存
+	// 持久化数据目录
+	DataDir = getDataDir()
+	
+	// PostProcessCache 后处理结果缓存（内存）
 	PostProcessCache     map[string]models.PostProcessCacheEntry
 	PostProcessCacheLock sync.RWMutex
 	
@@ -47,21 +32,17 @@ var (
 	dataChangedLock sync.Mutex
 )
 
-// InitPersistence 初始化持久化模块
-func InitPersistence() {
-	PostProcessCache = make(map[string]models.PostProcessCacheEntry)
-	
-	// 确保数据目录存在
-	ensureDataDir()
-	
-	// 加载已保存的数据
-	loadPersistedData()
-	
-	// 启动定期保存任务
-	go autoSaveLoop()
-	
-	// 启动定期清理任务
-	go autoCleanupLoop()
+// getDataDir 获取数据目录，优先使用环境变量，否则使用./data
+func getDataDir() string {
+	if dir := os.Getenv("DATA_DIR"); dir != "" {
+		return dir
+	}
+	// Docker环境
+	if _, err := os.Stat("/app"); err == nil {
+		return "/app/data"
+	}
+	// 本地开发环境
+	return "./data"
 }
 
 // ensureDataDir 确保数据目录存在
@@ -73,10 +54,33 @@ func ensureDataDir() {
 	}
 }
 
+// InitPersistence 初始化持久化模块
+func InitPersistence() {
+	PostProcessCache = make(map[string]models.PostProcessCacheEntry)
+	
+	// 确保数据目录存在
+	ensureDataDir()
+	
+	// 初始化数据库
+	if err := InitDatabase(); err != nil {
+		log.Printf("[持久化] 数据库初始化失败: %v", err)
+		panic(err)
+	}
+	
+	// 加载已保存的数据
+	loadPersistedData()
+	
+	// 启动定期保存任务
+	go autoSaveLoop()
+	
+	// 启动定期清理任务
+	go autoCleanupLoop()
+}
+
 // loadPersistedData 加载持久化的数据
 func loadPersistedData() {
-	// 加载过滤缓存
-	loadFilterCache()
+	// 加载分类缓存
+	loadClassifyCache()
 	// 加载已读状态
 	loadReadState()
 	// 加载后处理缓存
@@ -85,53 +89,39 @@ func loadPersistedData() {
 	loadItemsCache()
 }
 
-// loadFilterCache 加载过滤缓存
-func loadFilterCache() {
-	data, err := os.ReadFile(FilterCacheFile)
+// loadClassifyCache 加载分类缓存
+func loadClassifyCache() {
+	cache, err := DBLoadClassifyCache()
 	if err != nil {
-		if !os.IsNotExist(err) {
-			log.Printf("读取过滤缓存文件失败: %v", err)
-		}
+		log.Printf("读取分类缓存失败: %v", err)
 		return
 	}
 	
-	var cache map[string]models.FilterCacheEntry
-	if err := json.Unmarshal(data, &cache); err != nil {
-		log.Printf("解析过滤缓存文件失败: %v", err)
-		return
+	globals.ClassifyCacheLock.Lock()
+	globals.ClassifyCache = make(map[string]models.ClassifyCacheEntry)
+	for link, category := range cache {
+		globals.ClassifyCache[link] = models.ClassifyCacheEntry{Category: category}
 	}
+	globals.ClassifyCacheLock.Unlock()
 	
-	globals.FilterCacheLock.Lock()
-	globals.FilterCache = cache
-	globals.FilterCacheLock.Unlock()
-	
-	log.Printf("[数据加载] 过滤缓存: 已加载 %d 条", len(cache))
+	log.Printf("[数据加载] 分类缓存: 已加载 %d 条", len(cache))
 }
 
 // loadReadState 加载已读状态
 func loadReadState() {
-	data, err := os.ReadFile(ReadStateFile)
+	state, err := DBLoadReadState()
 	if err != nil {
-		if !os.IsNotExist(err) {
-			log.Printf("读取已读状态文件失败: %v", err)
-		}
-		return
-	}
-	
-	var readState map[string]int64
-	if err := json.Unmarshal(data, &readState); err != nil {
-		log.Printf("解析已读状态文件失败: %v", err)
+		log.Printf("读取已读状态失败: %v", err)
 		return
 	}
 	
 	globals.ReadStateLock.Lock()
-	globals.ReadState = readState
+	globals.ReadState = state
 	globals.ReadStateLock.Unlock()
 	
-	log.Printf("[数据加载] 已读状态: 已加载 %d 条", len(readState))
+	log.Printf("[数据加载] 已读状态: 已加载 %d 条", len(state))
 
 	// 启动时延迟执行清理，防止离线期间配置变更导致的数据冗余
-	// 只有在 DbMap 准备好后才执行，避免误删
 	go func() {
 		for i := 0; i < 12; i++ { // 最多尝试 1 分钟
 			time.Sleep(5 * time.Second)
@@ -143,6 +133,105 @@ func loadReadState() {
 			}
 		}
 	}()
+}
+
+// loadPostProcessCache 加载后处理缓存
+func loadPostProcessCache() {
+	cache, err := DBLoadPostProcessCache()
+	if err != nil {
+		log.Printf("读取后处理缓存失败: %v", err)
+		return
+	}
+	
+	PostProcessCacheLock.Lock()
+	PostProcessCache = make(map[string]models.PostProcessCacheEntry)
+	for link, entry := range cache {
+		PostProcessCache[link] = models.PostProcessCacheEntry{
+			Title:       entry.Title,
+			Link:        entry.NewLink,
+			PubDate:     entry.PubDate,
+			ProcessedAt: entry.ProcessedAt,
+		}
+	}
+	PostProcessCacheLock.Unlock()
+	
+	log.Printf("[数据加载] 后处理缓存: 已加载 %d 条", len(cache))
+}
+
+// loadItemsCache 加载条目缓存
+func loadItemsCache() {
+	cache, err := DBLoadItemsCache()
+	if err != nil {
+		log.Printf("读取条目缓存失败: %v", err)
+		return
+	}
+	
+	globals.ItemsCacheLock.Lock()
+	globals.ItemsCache = make(map[string][]models.Item)
+	for rssURL, entries := range cache {
+		items := make([]models.Item, len(entries))
+		for i, entry := range entries {
+			items[i] = models.Item{
+				Title:        entry.Title,
+				Link:         entry.Link,
+				OriginalLink: entry.OriginalLink,
+				PubDate:      entry.PubDate,
+			}
+			// 从分类缓存中恢复类别，这对于文件夹过滤功能至关重要
+			globals.ClassifyCacheLock.RLock()
+			if cat, ok := globals.ClassifyCache[entry.Link]; ok {
+				items[i].Category = cat.Category
+			} else if entry.OriginalLink != "" {
+				if cat, ok := globals.ClassifyCache[entry.OriginalLink]; ok {
+					items[i].Category = cat.Category
+				}
+			}
+			globals.ClassifyCacheLock.RUnlock()
+		}
+		globals.ItemsCache[rssURL] = items
+	}
+	globals.ItemsCacheLock.Unlock()
+	
+	// 同时也填充 DbMap 以便重启后能立即展示缓存
+	globals.Lock.Lock()
+	for rssURL, items := range globals.ItemsCache {
+		source := globals.RssUrls.GetSourceByURL(rssURL)
+		title := rssURL
+		icon := ""
+		showPubDate := false
+		showCategory := false
+		if source != nil {
+			if source.Name != "" {
+				title = source.Name
+			}
+			icon = GetIconForURL(rssURL)
+			showPubDate = source.ShowPubDate
+			showCategory = source.ShowCategory
+		}
+		
+		// 构造 AllItemLinks 和 AllItemTitles，防止首次更新时变动检测失效
+		links := make([]string, len(items))
+		titles := make([]string, len(items))
+		for i, item := range items {
+			links[i] = item.Link
+			titles[i] = item.Title
+		}
+
+		globals.DbMap[rssURL] = models.Feed{
+			Title:         title,
+			Link:          rssURL,
+			Icon:          icon,
+			Items:         items,
+			Custom:        map[string]string{"lastupdate": "已加载缓存"},
+			AllItemLinks:  links,
+			AllItemTitles: titles,
+			ShowPubDate:   showPubDate,
+			ShowCategory:  showCategory,
+		}
+	}
+	globals.Lock.Unlock()
+	
+	log.Printf("[数据加载] 条目缓存: 已加载 %d 个源", len(cache))
 }
 
 // MarkDataChanged 标记数据已更改
@@ -169,125 +258,78 @@ func autoSaveLoop() {
 	}
 }
 
-// SaveAllData 保存所有数据
+// SaveAllData 保存所有数据到数据库
 func SaveAllData() {
-	saveFilterCache()
+	saveClassifyCache()
 	saveReadState()
 	savePostProcessCache()
 	saveItemsCache()
 }
 
-// saveFilterCache 保存过滤缓存
-func saveFilterCache() {
-	globals.FilterCacheLock.RLock()
-	data, err := json.MarshalIndent(globals.FilterCache, "", "  ")
-	globals.FilterCacheLock.RUnlock()
+// saveClassifyCache 保存分类缓存到数据库
+func saveClassifyCache() {
+	globals.ClassifyCacheLock.RLock()
+	defer globals.ClassifyCacheLock.RUnlock()
 	
-	if err != nil {
-		log.Printf("序列化过滤缓存失败: %v", err)
-		return
-	}
-	
-	if err := writeFileAtomic(FilterCacheFile, data); err != nil {
-		log.Printf("保存过滤缓存失败: %v", err)
-		return
+	for link, entry := range globals.ClassifyCache {
+		if err := DBSaveClassifyCache(link, entry.Category); err != nil {
+			log.Printf("保存分类缓存失败 [%s]: %v", link, err)
+		}
 	}
 }
 
-// saveReadState 保存已读状态
+// saveReadState 保存已读状态到数据库
 func saveReadState() {
 	globals.ReadStateLock.RLock()
-	data, err := json.MarshalIndent(globals.ReadState, "", "  ")
+	states := make(map[string]int64, len(globals.ReadState))
+	for k, v := range globals.ReadState {
+		states[k] = v
+	}
 	globals.ReadStateLock.RUnlock()
 	
-	if err != nil {
-		log.Printf("序列化已读状态失败: %v", err)
-		return
-	}
-	
-	if err := writeFileAtomic(ReadStateFile, data); err != nil {
+	if err := DBSaveReadStateBatch(states); err != nil {
 		log.Printf("保存已读状态失败: %v", err)
-		return
 	}
 }
 
-// loadPostProcessCache 加载后处理缓存
-func loadPostProcessCache() {
-	data, err := os.ReadFile(PostProcessCacheFile)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			log.Printf("读取后处理缓存文件失败: %v", err)
-		}
-		return
-	}
-	
-	var cache map[string]models.PostProcessCacheEntry
-	if err := json.Unmarshal(data, &cache); err != nil {
-		log.Printf("解析后处理缓存文件失败: %v", err)
-		return
-	}
-	
-	PostProcessCacheLock.Lock()
-	PostProcessCache = cache
-	PostProcessCacheLock.Unlock()
-	
-	log.Printf("[数据加载] 后处理缓存: 已加载 %d 条", len(cache))
-}
-
-// savePostProcessCache 保存后处理缓存
+// savePostProcessCache 保存后处理缓存到数据库
 func savePostProcessCache() {
 	PostProcessCacheLock.RLock()
-	data, err := json.MarshalIndent(PostProcessCache, "", "  ")
-	PostProcessCacheLock.RUnlock()
+	defer PostProcessCacheLock.RUnlock()
 	
-	if err != nil {
-		log.Printf("序列化后处理缓存失败: %v", err)
-		return
-	}
-	
-	if err := writeFileAtomic(PostProcessCacheFile, data); err != nil {
-		log.Printf("保存后处理缓存失败: %v", err)
-		return
-	}
-}
-
-// loadItemsCache 加载条目缓存
-func loadItemsCache() {
-	data, err := os.ReadFile(ItemsCacheFile)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			log.Printf("读取条目缓存文件失败: %v", err)
+	for link, entry := range PostProcessCache {
+		dbEntry := DBPostProcessEntry{
+			Link:        link,
+			Title:       entry.Title,
+			NewLink:     entry.Link,
+			PubDate:     entry.PubDate,
+			ProcessedAt: entry.ProcessedAt,
 		}
-		return
+		if err := DBSavePostProcessCache(dbEntry); err != nil {
+			log.Printf("保存后处理缓存失败 [%s]: %v", link, err)
+		}
 	}
-	
-	var cache map[string][]models.Item
-	if err := json.Unmarshal(data, &cache); err != nil {
-		log.Printf("解析条目缓存文件失败: %v", err)
-		return
-	}
-	
-	globals.ItemsCacheLock.Lock()
-	globals.ItemsCache = cache
-	globals.ItemsCacheLock.Unlock()
-	
-	log.Printf("[数据加载] 条目缓存: 已加载 %d 个源", len(cache))
 }
 
-// saveItemsCache 保存条目缓存
+// saveItemsCache 保存条目缓存到数据库
 func saveItemsCache() {
 	globals.ItemsCacheLock.RLock()
-	data, err := json.MarshalIndent(globals.ItemsCache, "", "  ")
-	globals.ItemsCacheLock.RUnlock()
+	defer globals.ItemsCacheLock.RUnlock()
 	
-	if err != nil {
-		log.Printf("序列化条目缓存失败: %v", err)
-		return
-	}
-	
-	if err := writeFileAtomic(ItemsCacheFile, data); err != nil {
-		log.Printf("保存条目缓存失败: %v", err)
-		return
+	for rssURL, items := range globals.ItemsCache {
+		entries := make([]DBItemsCacheEntry, len(items))
+		for i, item := range items {
+			entries[i] = DBItemsCacheEntry{
+				RssURL:       rssURL,
+				Title:        item.Title,
+				Link:         item.Link,
+				OriginalLink: item.OriginalLink,
+				PubDate:      item.PubDate,
+			}
+		}
+		if err := DBSaveItemsCache(rssURL, entries); err != nil {
+			log.Printf("保存条目缓存失败 [%s]: %v", rssURL, err)
+		}
 	}
 }
 
@@ -304,7 +346,23 @@ func SetItemsCache(rssURL string, items []models.Item) {
 	globals.ItemsCacheLock.Lock()
 	globals.ItemsCache[rssURL] = items
 	globals.ItemsCacheLock.Unlock()
-	MarkDataChanged()
+	
+	// 异步保存到数据库
+	go func() {
+		entries := make([]DBItemsCacheEntry, len(items))
+		for i, item := range items {
+			entries[i] = DBItemsCacheEntry{
+				RssURL:       rssURL,
+				Title:        item.Title,
+				Link:         item.Link,
+				OriginalLink: item.OriginalLink,
+				PubDate:      item.PubDate,
+			}
+		}
+		if err := DBSaveItemsCache(rssURL, entries); err != nil {
+			log.Printf("保存条目缓存失败 [%s]: %v", rssURL, err)
+		}
+	}()
 }
 
 // DeleteItemsCache 删除指定源的条目缓存
@@ -312,24 +370,14 @@ func DeleteItemsCache(rssURL string) {
 	globals.ItemsCacheLock.Lock()
 	delete(globals.ItemsCache, rssURL)
 	globals.ItemsCacheLock.Unlock()
-	MarkDataChanged()
-}
-
-// writeFileAtomic 原子写入文件（先写临时文件再重命名）
-func writeFileAtomic(filePath string, data []byte) error {
-	// 确保父目录存在
-	dir := filepath.Dir(filePath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("创建父目录失败: %w", err)
-	}
 	
-	tmpFile := filePath + ".tmp"
-	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
-		return err
-	}
-	return os.Rename(tmpFile, filePath)
+	// 异步从数据库删除
+	go func() {
+		if err := DBDeleteItemsCacheForURL(rssURL); err != nil {
+			log.Printf("删除条目缓存失败 [%s]: %v", rssURL, err)
+		}
+	}()
 }
-
 
 // GetPostProcessCache 获取后处理缓存条目
 func GetPostProcessCache(link string) (*models.PostProcessCacheEntry, bool) {
@@ -347,7 +395,20 @@ func SetPostProcessCache(link string, entry models.PostProcessCacheEntry) {
 	PostProcessCacheLock.Lock()
 	PostProcessCache[link] = entry
 	PostProcessCacheLock.Unlock()
-	MarkDataChanged()
+	
+	// 异步保存到数据库
+	go func() {
+		dbEntry := DBPostProcessEntry{
+			Link:        link,
+			Title:       entry.Title,
+			NewLink:     entry.Link,
+			PubDate:     entry.PubDate,
+			ProcessedAt: entry.ProcessedAt,
+		}
+		if err := DBSavePostProcessCache(dbEntry); err != nil {
+			log.Printf("保存后处理缓存失败 [%s]: %v", link, err)
+		}
+	}()
 }
 
 // DeletePostProcessCache 删除后处理缓存条目
@@ -355,7 +416,13 @@ func DeletePostProcessCache(link string) {
 	PostProcessCacheLock.Lock()
 	delete(PostProcessCache, link)
 	PostProcessCacheLock.Unlock()
-	MarkDataChanged()
+	
+	// 异步从数据库删除
+	go func() {
+		if err := DBDeletePostProcessCache(link); err != nil {
+			log.Printf("删除后处理缓存失败 [%s]: %v", link, err)
+		}
+	}()
 }
 
 // GetReadState 获取所有已读状态
@@ -381,21 +448,37 @@ func IsRead(link string) bool {
 
 // MarkRead 标记文章为已读
 func MarkRead(link string) {
+	now := time.Now().Unix()
 	globals.ReadStateLock.Lock()
-	globals.ReadState[link] = time.Now().Unix()
+	globals.ReadState[link] = now
 	globals.ReadStateLock.Unlock()
-	MarkDataChanged()
+	
+	// 异步保存到数据库
+	go func() {
+		if err := DBSaveReadState(link, now); err != nil {
+			log.Printf("保存已读状态失败 [%s]: %v", link, err)
+		}
+	}()
 }
 
 // MarkReadBatch 批量标记文章为已读
 func MarkReadBatch(links []string) {
-	globals.ReadStateLock.Lock()
 	now := time.Now().Unix()
+	states := make(map[string]int64, len(links))
+	
+	globals.ReadStateLock.Lock()
 	for _, link := range links {
 		globals.ReadState[link] = now
+		states[link] = now
 	}
 	globals.ReadStateLock.Unlock()
-	MarkDataChanged()
+	
+	// 异步保存到数据库
+	go func() {
+		if err := DBSaveReadStateBatch(states); err != nil {
+			log.Printf("批量保存已读状态失败: %v", err)
+		}
+	}()
 }
 
 // MarkUnread 标记文章为未读
@@ -403,7 +486,13 @@ func MarkUnread(link string) {
 	globals.ReadStateLock.Lock()
 	delete(globals.ReadState, link)
 	globals.ReadStateLock.Unlock()
-	MarkDataChanged()
+	
+	// 异步从数据库删除
+	go func() {
+		if err := DBDeleteReadState(link); err != nil {
+			log.Printf("删除已读状态失败 [%s]: %v", link, err)
+		}
+	}()
 }
 
 // ClearAllReadState 清除所有已读状态
@@ -411,13 +500,20 @@ func ClearAllReadState() {
 	globals.ReadStateLock.Lock()
 	globals.ReadState = make(map[string]int64)
 	globals.ReadStateLock.Unlock()
-	MarkDataChanged()
+	
+	// 异步从数据库清空
+	go func() {
+		if err := DBClearReadState(); err != nil {
+			log.Printf("清空已读状态失败: %v", err)
+		}
+	}()
 }
 
 // Shutdown 关闭时保存数据
 func Shutdown() {
 	log.Println("正在保存持久化数据...")
 	SaveAllData()
+	CloseDatabase()
 	log.Println("持久化数据保存完成")
 }
 
@@ -427,7 +523,6 @@ func autoCleanupLoop() {
 	defer ticker.Stop()
 	
 	for range ticker.C {
-		// 每次清理前都检查 DbMap 是否有数据
 		if isDbMapReady() {
 			cleanupPersistentData()
 		} else {
@@ -436,7 +531,7 @@ func autoCleanupLoop() {
 	}
 }
 
-// isDbMapReady 检查 DbMap 是否已准备好（所有配置的源都已加载）
+// isDbMapReady 检查 DbMap 是否已准备好
 func isDbMapReady() bool {
 	globals.Lock.RLock()
 	defer globals.Lock.RUnlock()
@@ -446,8 +541,6 @@ func isDbMapReady() bool {
 		return true
 	}
 	
-	// 检查是否所有配置的源都已经有过抓取记录（存在于 DbMap 中）
-	// 这避免了在启动初期或部分源加载失败时执行全量清理导致的数据丢失
 	loadedCount := 0
 	for _, url := range allUrls {
 		if _, ok := globals.DbMap[url]; ok {
@@ -455,8 +548,6 @@ func isDbMapReady() bool {
 		}
 	}
 	
-	// 如果已加载的源少于总数的 80%，认为尚未就绪（允许少量源抓取失败）
-	// 但在配置变更初期的前几秒，loadedCount 会很低
 	return loadedCount >= len(allUrls) || (len(allUrls) > 0 && loadedCount >= (len(allUrls)*4/5))
 }
 
@@ -464,54 +555,46 @@ func isDbMapReady() bool {
 func cleanupPersistentData() {
 	log.Println("开始清理持久化数据...")
 	
-	// 收集所有当前有效的文章链接
 	validLinks := collectValidArticleLinks()
 	
-	// 如果 validLinks 为空，说明 DbMap 可能还未初始化或网络有问题，跳过清理
 	if len(validLinks) == 0 {
 		log.Println("清理跳过：没有有效的文章链接（DbMap 可能为空）")
 		return
 	}
 	
-	// 清理过滤缓存
-	cleanedFilterCache := cleanupFilterCache(validLinks)
-	
-	// 清理已读状态
+	cleanedClassifyCache := cleanupClassifyCache(validLinks)
 	cleanedReadState := cleanupReadState(validLinks)
 	
-	// 清理后处理缓存（只保留启用了后处理的源的缓存）
 	validLinksWithPostProcess := collectValidLinksWithPostProcess()
 	cleanedPostProcessCache := cleanupPostProcessCache(validLinksWithPostProcess)
 	
-	// 清理条目缓存（只保留启用了缓存的源）
 	cleanedItemsCache := cleanupItemsCache()
 	
-	if cleanedFilterCache > 0 || cleanedReadState > 0 || cleanedPostProcessCache > 0 || cleanedItemsCache > 0 {
-		log.Printf("[数据清理] 清理完成: 过滤缓存 %d 条，已读状态 %d 条，后处理缓存 %d 条，条目缓存 %d 个源", 
-			cleanedFilterCache, cleanedReadState, cleanedPostProcessCache, cleanedItemsCache)
-		MarkDataChanged()
-		SaveAllData()
+	// 清理过期的图标缓存 (1天)
+	cleanedIcons, err := DBCleanupIconCache(1)
+	if err != nil {
+		log.Printf("[数据清理] 图标缓存清理失败: %v", err)
+	}
+
+	if cleanedClassifyCache > 0 || cleanedReadState > 0 || cleanedPostProcessCache > 0 || cleanedItemsCache > 0 || cleanedIcons > 0 {
+		log.Printf("[数据清理] 清理完成: 分类缓存 %d 条，已读状态 %d 条，后处理缓存 %d 条，条目缓存 %d 个源，图标缓存 %d 条", 
+			cleanedClassifyCache, cleanedReadState, cleanedPostProcessCache, cleanedItemsCache, cleanedIcons)
 	} else {
 		log.Println("[数据清理] 清理完成: 暂无需要清理的数据")
 	}
 }
 
 // collectValidArticleLinks 收集所有当前有效的文章链接
-// 包括所有RSS源返回的原始文章（过滤前），这样被过滤的文章缓存也会被保留
-// 同时包含修改后的链接（后处理可能修改 Link）
 func collectValidArticleLinks() map[string]bool {
 	validLinks := make(map[string]bool)
 	
 	globals.Lock.RLock()
 	for _, feed := range globals.DbMap {
-		// 收集过滤前的所有文章（当前抓取周期）
 		for _, link := range feed.AllItemLinks {
 			validLinks[link] = true
 		}
-		// 收集当前展示的所有文章（可能包含缓存合并的旧文章）
 		for _, item := range feed.Items {
 			validLinks[item.Link] = true
-			// 同时收集原始链接（后处理可能修改了 Link）
 			if item.OriginalLink != "" {
 				validLinks[item.OriginalLink] = true
 			}
@@ -519,7 +602,6 @@ func collectValidArticleLinks() map[string]bool {
 	}
 	globals.Lock.RUnlock()
 	
-	// 同时收集 ItemsCache 中的条目（这些是历史缓存条目，可能不在当前 DbMap 中）
 	globals.ItemsCacheLock.RLock()
 	for _, items := range globals.ItemsCache {
 		for _, item := range items {
@@ -538,36 +620,24 @@ func collectValidArticleLinks() map[string]bool {
 func collectValidLinksWithPostProcess() map[string]bool {
 	validLinks := make(map[string]bool)
 	
-	// 收集所有启用了后处理的源的URL
 	postProcessEnabledUrls := make(map[string]bool)
 	for _, source := range globals.RssUrls.Sources {
-		if source.IsFolder() {
-			for _, feedUrl := range source.Urls {
-				if feedUrl.PostProcess != nil && feedUrl.PostProcess.Enabled {
-					postProcessEnabledUrls[feedUrl.URL] = true
-				} else if source.PostProcess != nil && source.PostProcess.Enabled && feedUrl.PostProcess == nil {
-					postProcessEnabledUrls[feedUrl.URL] = true
-				}
-			}
-		} else if source.URL != "" && source.PostProcess != nil && source.PostProcess.Enabled {
+		if source.URL != "" && source.PostProcess != nil && source.PostProcess.Enabled {
 			postProcessEnabledUrls[source.URL] = true
 		}
 	}
 	
 	globals.Lock.RLock()
 	for rssURL, feed := range globals.DbMap {
-		// 检查该源是否启用了后处理
 		if !postProcessEnabledUrls[rssURL] {
 			continue
 		}
 		
-		// 使用 AllItemLinks（过滤前的所有文章，原始链接）
 		if len(feed.AllItemLinks) > 0 {
 			for _, link := range feed.AllItemLinks {
 				validLinks[link] = true
 			}
 		}
-		// 同时收集 Items 中的链接（包括原始链接和修改后的链接）
 		for _, item := range feed.Items {
 			validLinks[item.Link] = true
 			if item.OriginalLink != "" {
@@ -577,7 +647,6 @@ func collectValidLinksWithPostProcess() map[string]bool {
 	}
 	globals.Lock.RUnlock()
 	
-	// 同时收集 ItemsCache 中后处理源的条目
 	globals.ItemsCacheLock.RLock()
 	for url, items := range globals.ItemsCache {
 		if postProcessEnabledUrls[url] {
@@ -594,51 +663,59 @@ func collectValidLinksWithPostProcess() map[string]bool {
 	return validLinks
 }
 
-// cleanupFilterCache 清理过滤缓存中不再有效的条目
-// 注意：由于被过滤的文章也应该保留缓存（避免重复AI判断），
-// 这里的 validLinks 已经包含了 FilterCache 中的所有链接
-func cleanupFilterCache(validLinks map[string]bool) int {
-	globals.FilterCacheLock.Lock()
-	defer globals.FilterCacheLock.Unlock()
+// cleanupClassifyCache 清理分类缓存中不再有效的条目
+func cleanupClassifyCache(validLinks map[string]bool) int {
+	globals.ClassifyCacheLock.Lock()
+	defer globals.ClassifyCacheLock.Unlock()
 	
-	cleaned := 0
-	for link := range globals.FilterCache {
+	var toDelete []string
+	for link := range globals.ClassifyCache {
 		if !validLinks[link] {
-			delete(globals.FilterCache, link)
-			cleaned++
+			toDelete = append(toDelete, link)
 		}
 	}
 	
-	return cleaned
+	for _, link := range toDelete {
+		delete(globals.ClassifyCache, link)
+	}
+	
+	// 从数据库删除
+	if len(toDelete) > 0 {
+		go DBDeleteClassifyCacheBatch(toDelete)
+	}
+	
+	return len(toDelete)
 }
 
 // cleanupReadState 清理已读状态中不再有效的条目
-// 策略：保留当前所有有效链接的已读状态，或者保留 30 天内的已读记录（防止由于源条目数限制导致的误删）
 func cleanupReadState(validLinks map[string]bool) int {
 	globals.ReadStateLock.Lock()
 	defer globals.ReadStateLock.Unlock()
 	
-	cleaned := 0
 	now := time.Now().Unix()
 	gracePeriod := int64(1 * 24 * 3600) // 1 天保留期
 	
+	var toDelete []string
 	for link, readAt := range globals.ReadState {
-		// 如果链接当前有效，保留
 		if validLinks[link] {
 			continue
 		}
-		
-		// 如果是 1 天内读过的，保留（防止误删还没失效但在 feeds 中被顶掉的条目）
 		if now-readAt < gracePeriod {
 			continue
 		}
-		
-		// 否则清理
-		delete(globals.ReadState, link)
-		cleaned++
+		toDelete = append(toDelete, link)
 	}
 	
-	return cleaned
+	for _, link := range toDelete {
+		delete(globals.ReadState, link)
+	}
+	
+	// 从数据库删除
+	if len(toDelete) > 0 {
+		go DBDeleteReadStateBatch(toDelete)
+	}
+	
+	return len(toDelete)
 }
 
 // cleanupPostProcessCache 清理后处理缓存中不再有效的条目
@@ -646,15 +723,69 @@ func cleanupPostProcessCache(validLinks map[string]bool) int {
 	PostProcessCacheLock.Lock()
 	defer PostProcessCacheLock.Unlock()
 	
-	cleaned := 0
+	var toDelete []string
 	for link := range PostProcessCache {
 		if !validLinks[link] {
-			delete(PostProcessCache, link)
-			cleaned++
+			toDelete = append(toDelete, link)
 		}
 	}
 	
-	return cleaned
+	for _, link := range toDelete {
+		delete(PostProcessCache, link)
+	}
+	
+	// 从数据库删除
+	if len(toDelete) > 0 {
+		go DBDeletePostProcessCacheBatch(toDelete)
+	}
+	
+	return len(toDelete)
+}
+
+// cleanupItemsCache 清理条目缓存中不再启用缓存的源
+// cacheItems: -1表示禁用缓存，0表示自动缓存所有过滤后的条目，>0表示缓存指定数量
+func cleanupItemsCache() int {
+	// 收集所有启用了缓存的源的URL（cacheItems >= 0 即启用缓存）
+	validUrls := make(map[string]bool)
+	for _, source := range globals.RssUrls.Sources {
+		// cacheItems >= 0 表示启用缓存（0为自动，>0为指定数量），-1表示禁用
+		if source.URL != "" && source.CacheItems >= 0 {
+			validUrls[source.URL] = true
+		}
+	}
+	
+	globals.ItemsCacheLock.Lock()
+	defer globals.ItemsCacheLock.Unlock()
+	
+	var toDelete []string
+	for url := range globals.ItemsCache {
+		if !validUrls[url] {
+			toDelete = append(toDelete, url)
+		}
+	}
+	
+	for _, url := range toDelete {
+		delete(globals.ItemsCache, url)
+	}
+	
+	// 从数据库删除
+	if len(toDelete) > 0 {
+		go DBDeleteItemsCacheForURLs(toDelete)
+	}
+	
+	return len(toDelete)
+}
+
+// GetCacheItems 获取指定URL的缓存条目数配置
+// 返回值: -1表示禁用缓存，0表示自动缓存所有过滤后的条目，>0表示缓存指定数量
+// 注意：未在配置中找到的源默认返回0（自动缓存）
+func GetCacheItems(rssURL string) int {
+	for _, source := range globals.RssUrls.Sources {
+		if source.URL == rssURL {
+			return source.CacheItems
+		}
+	}
+	return 0
 }
 
 // SaveConfig 保存配置到 config.json
@@ -664,8 +795,6 @@ func SaveConfig(config models.Config) error {
 		return err
 	}
 	
-	// Docker Bind Mount 不支持 atomic rename 覆盖文件，必须直接写入
-	// 使用 O_TRUNC 清空原有内容
 	f, err := os.OpenFile("config.json", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
@@ -681,65 +810,12 @@ func CleanupPostProcessCacheOnConfigChange() {
 	if !isDbMapReady() {
 		return
 	}
-	// 收集启用了后处理的源的文章链接
 	validLinksWithPostProcess := collectValidLinksWithPostProcess()
-	
-	// 清理后处理缓存
 	cleaned := cleanupPostProcessCache(validLinksWithPostProcess)
 	
 	if cleaned > 0 {
 		log.Printf("后处理缓存清理: 已清理 %d 条", cleaned)
-		MarkDataChanged()
-		savePostProcessCache()
 	}
-}
-
-// cleanupItemsCache 清理条目缓存中不再启用缓存的源
-func cleanupItemsCache() int {
-	// 收集所有启用了缓存的源的URL
-	validUrls := make(map[string]bool)
-	for _, source := range globals.RssUrls.Sources {
-		if source.IsFolder() {
-			for _, feedUrl := range source.Urls {
-				if feedUrl.CacheItems > 0 {
-					validUrls[feedUrl.URL] = true
-				}
-			}
-		} else if source.URL != "" && source.CacheItems > 0 {
-			validUrls[source.URL] = true
-		}
-	}
-	
-	globals.ItemsCacheLock.Lock()
-	defer globals.ItemsCacheLock.Unlock()
-	
-	cleaned := 0
-	for url := range globals.ItemsCache {
-		if !validUrls[url] {
-			delete(globals.ItemsCache, url)
-			cleaned++
-		}
-	}
-	
-	return cleaned
-}
-
-// GetCacheItems 获取指定URL的缓存条目数配置，返回0表示不缓存
-func GetCacheItems(rssURL string) int {
-	for _, source := range globals.RssUrls.Sources {
-		if source.URL == rssURL {
-			return source.CacheItems
-		}
-		// 检查文件夹内的 URLs
-		if source.IsFolder() {
-			for _, feedUrl := range source.Urls {
-				if feedUrl.URL == rssURL {
-					return feedUrl.CacheItems
-				}
-			}
-		}
-	}
-	return 0
 }
 
 // CleanupItemsCacheOnConfigChange 配置变更时立即清理条目缓存
@@ -748,8 +824,6 @@ func CleanupItemsCacheOnConfigChange() {
 	
 	if cleaned > 0 {
 		log.Printf("条目缓存清理: 已清理 %d 个源", cleaned)
-		MarkDataChanged()
-		saveItemsCache()
 	}
 }
 
@@ -764,44 +838,38 @@ func CleanupReadStateOnConfigChange() {
 	
 	if cleaned > 0 {
 		log.Printf("[已读状态清理] 由于超过 1 天或订阅源变更，%d 条过期记录被清理", cleaned)
-		MarkDataChanged()
-		saveReadState()
 	}
 }
 
-// ClearFilterCacheForSource 清除指定源的AI过滤缓存
-func ClearFilterCacheForSource(rssURL string) int {
-	// 收集该源的所有文章链接
+// ClearClassifyCacheForSource 清除指定源的AI分类缓存
+func ClearClassifyCacheForSource(rssURL string) int {
 	articleLinks := collectArticleLinksForSource(rssURL)
 	
 	if len(articleLinks) == 0 {
 		return 0
 	}
 	
-	globals.FilterCacheLock.Lock()
-	defer globals.FilterCacheLock.Unlock()
+	globals.ClassifyCacheLock.Lock()
+	defer globals.ClassifyCacheLock.Unlock()
 	
-	cleared := 0
+	var toDelete []string
 	for link := range articleLinks {
-		if _, exists := globals.FilterCache[link]; exists {
-			delete(globals.FilterCache, link)
-			cleared++
+		if _, exists := globals.ClassifyCache[link]; exists {
+			delete(globals.ClassifyCache, link)
+			toDelete = append(toDelete, link)
 		}
 	}
 	
-	if cleared > 0 {
-		MarkDataChanged()
-		// 立即保存
-		go saveFilterCache()
-		log.Printf("[缓存清除] 清除源 %s 的AI过滤缓存: %d 条", rssURL, cleared)
+	if len(toDelete) > 0 {
+		go DBDeleteClassifyCacheBatch(toDelete)
+		log.Printf("[缓存清除] 清除源 %s 的AI分类缓存: %d 条", rssURL, len(toDelete))
 	}
 	
-	return cleared
+	return len(toDelete)
 }
 
 // ClearPostProcessCacheForSource 清除指定源的后处理缓存
 func ClearPostProcessCacheForSource(rssURL string) int {
-	// 收集该源的所有文章链接
 	articleLinks := collectArticleLinksForSource(rssURL)
 	
 	if len(articleLinks) == 0 {
@@ -811,29 +879,26 @@ func ClearPostProcessCacheForSource(rssURL string) int {
 	PostProcessCacheLock.Lock()
 	defer PostProcessCacheLock.Unlock()
 	
-	cleared := 0
+	var toDelete []string
 	for link := range articleLinks {
 		if _, exists := PostProcessCache[link]; exists {
 			delete(PostProcessCache, link)
-			cleared++
+			toDelete = append(toDelete, link)
 		}
 	}
 	
-	if cleared > 0 {
-		MarkDataChanged()
-		// 立即保存
-		go savePostProcessCache()
-		log.Printf("[缓存清除] 清除源 %s 的后处理缓存: %d 条", rssURL, cleared)
+	if len(toDelete) > 0 {
+		go DBDeletePostProcessCacheBatch(toDelete)
+		log.Printf("[缓存清除] 清除源 %s 的后处理缓存: %d 条", rssURL, len(toDelete))
 	}
 	
-	return cleared
+	return len(toDelete)
 }
 
 // collectArticleLinksForSource 收集指定源的所有文章链接
 func collectArticleLinksForSource(rssURL string) map[string]bool {
 	links := make(map[string]bool)
 	
-	// 从 DbMap 收集
 	globals.Lock.RLock()
 	if feed, exists := globals.DbMap[rssURL]; exists {
 		for _, link := range feed.AllItemLinks {
@@ -851,7 +916,6 @@ func collectArticleLinksForSource(rssURL string) map[string]bool {
 	}
 	globals.Lock.RUnlock()
 	
-	// 从 ItemsCache 收集
 	itemsCacheCount := 0
 	globals.ItemsCacheLock.RLock()
 	if items, exists := globals.ItemsCache[rssURL]; exists {
@@ -870,4 +934,18 @@ func collectArticleLinksForSource(rssURL string) map[string]bool {
 	}
 	
 	return links
+}
+
+// writeFileAtomic 原子写入文件（先写临时文件再重命名）- 保留用于配置文件
+func writeFileAtomic(filePath string, data []byte) error {
+	dir := filepath.Dir(filePath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("创建父目录失败: %w", err)
+	}
+	
+	tmpFile := filePath + ".tmp"
+	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
+		return err
+	}
+	return os.Rename(tmpFile, filePath)
 }

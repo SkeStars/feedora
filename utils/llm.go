@@ -18,21 +18,30 @@ import (
 	"time"
 )
 
-// FilterResponse AI过滤响应结构
-type FilterResponse struct {
-	IsFiltered bool    `json:"is_filtered"`
-	Confidence float64 `json:"confidence"`
-	Reason     string  `json:"reason"`
+// ClassifyResponse AI分类响应结构
+// ClassifyResponse AI分类响应结构
+type ClassifyResponse struct {
+	Category   string  `json:"category"`
+}
+
+// CheckBatchResponse 批量检查响应结构 (Map: index -> valid class)
+type CheckBatchResponse struct {
+	Results map[string]bool `json:"results"`
+}
+
+// BatchClassifyResponse 批量AI分类响应结构
+type BatchClassifyResponse struct {
+	Results map[string]string `json:"results"`
 }
 
 // LLMClient 大模型客户端
 type LLMClient struct {
-	config models.AIFilterConfig
+	config models.AIClassifyConfig
 	client *http.Client
 }
 
 // NewLLMClient 创建新的LLM客户端
-func NewLLMClient(config models.AIFilterConfig) *LLMClient {
+func NewLLMClient(config models.AIClassifyConfig) *LLMClient {
 	return &LLMClient{
 		config: config,
 		client: &http.Client{
@@ -82,18 +91,167 @@ type ChatResponse struct {
 	} `json:"error,omitempty"`
 }
 
-// ClassifyItem 对RSS文章进行分类
+// ClassifyBatchItems 对一批RSS文章进行AI分类
+func (c *LLMClient) ClassifyBatchItems(items map[int]models.Item, strategy *models.ClassifyStrategy, categories []models.Category) (*BatchClassifyResponse, error) {
+	if len(items) == 0 {
+		return &BatchClassifyResponse{Results: make(map[string]string)}, nil
+	}
+
+	// 构建批量文章内容
+	var contentBuilder strings.Builder
+	contentBuilder.WriteString("请对以下文章进行分类。\n")
+	contentBuilder.WriteString("返回一个JSON对象，键为文章的索引ID(string)，值为最匹配的类别ID(string)。\n")
+	contentBuilder.WriteString("文章列表：\n\n")
+
+	// 为了保持顺序稳定，我们按索引排序处理
+	indices := make([]int, 0, len(items))
+	for idx := range items {
+		indices = append(indices, idx)
+	}
+	sort.Ints(indices)
+
+	for _, idx := range indices {
+		item := items[idx]
+		contentBuilder.WriteString(fmt.Sprintf("--- 文章 ID: %d ---\n", idx))
+		contentBuilder.WriteString(buildItemContent(item))
+		contentBuilder.WriteString("\n\n")
+	}
+
+	content := contentBuilder.String()
+
+	// 构建类别信息
+	var categoryInfo strings.Builder
+	categoryInfo.WriteString("可用类别：\n")
+	for _, cat := range categories {
+		categoryInfo.WriteString(fmt.Sprintf("- %s (%s): %s\n", cat.ID, cat.Name, cat.Description))
+	}
+
+	// 获取系统提示词
+	systemPrompt := c.config.GetSystemPrompt()
+	if strategy != nil && strategy.CustomPrompt != "" {
+		systemPrompt = strategy.CustomPrompt
+	}
+
+	// 强制JSON模式提示
+	systemPrompt += "\n\n你必须返回严格的JSON格式。不要包含markdown标记。"
+
+	// 构建请求
+	systemContent := systemPrompt + "\n\n" + categoryInfo.String()
+	reqBody := ChatRequest{
+		Model: c.config.GetModel(),
+		Messages: []ChatMessage{
+			{Role: "system", Content: systemContent},
+			{Role: "user", Content: content},
+		},
+		Temperature: c.config.GetTemperature(),
+		MaxTokens:   c.config.GetMaxTokens() * 2, // 批量处理适当增加token
+		ResponseFormat: &ResponseFormat{
+			Type: "json_object",
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("序列化请求失败: %w", err)
+	}
+
+	// 发送请求
+	apiURL := fmt.Sprintf("%s/chat/completions", strings.TrimSuffix(c.config.GetAPIBase(), "/"))
+	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("创建请求失败: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.config.APIKey))
+
+	// 使用独立的 Client 进行批量请求，设置更长的超时时间
+	// 批量处理通常需要更长时间，我们设置为基础超时的 3 倍，且至少 60 秒
+	baseTimeout := c.config.GetTimeout()
+	batchTimeout := baseTimeout * 3
+	if batchTimeout < 60 {
+		batchTimeout = 60
+	}
+	
+	batchClient := &http.Client{
+		Timeout: time.Duration(batchTimeout) * time.Second,
+	}
+
+	resp, err := batchClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("发送请求失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("读取响应失败: %w", err)
+	}
+
+	var chatResp ChatResponse
+	if err := json.Unmarshal(body, &chatResp); err != nil {
+		return nil, fmt.Errorf("解析响应失败: %w (Body: %s)", err, string(body))
+	}
+
+	if chatResp.Error != nil {
+		return nil, fmt.Errorf("API错误: %s", chatResp.Error.Message)
+	}
+
+	if len(chatResp.Choices) == 0 {
+		return nil, fmt.Errorf("API未返回有效响应")
+	}
+
+	// 解析批量分类结果
+	responseContent := chatResp.Choices[0].Message.Content
+	return parseBatchClassifyResponse(responseContent)
+}
+
+// parseBatchClassifyResponse 解析批量分类响应
+func parseBatchClassifyResponse(content string) (*BatchClassifyResponse, error) {
+	jsonStr := extractJSON(content)
+	if jsonStr == "" {
+		// 尝试直接解析
+		jsonStr = content
+	}
+
+	// 尝试解析 {"results": {"0": "cat1", "1": "cat2"}}
+	var standardResp BatchClassifyResponse
+	if err := json.Unmarshal([]byte(jsonStr), &standardResp); err == nil && len(standardResp.Results) > 0 {
+		return &standardResp, nil
+	}
+	
+	// 尝试解析直接的 Map 结构 {"0": "cat1", "1": "cat2"}
+	var mapResp map[string]string
+	if err := json.Unmarshal([]byte(jsonStr), &mapResp); err == nil {
+		return &BatchClassifyResponse{Results: mapResp}, nil
+	}
+
+	// 兼容：尝试解析旧的结构（如果模型还是返回了复杂对象）
+	var oldStructResp struct{
+		Results map[string]ClassifyResponse `json:"results"`
+	}
+	if err := json.Unmarshal([]byte(jsonStr), &oldStructResp); err == nil && len(oldStructResp.Results) > 0 {
+		results := make(map[string]string)
+		for k, v := range oldStructResp.Results {
+			results[k] = v.Category
+		}
+		return &BatchClassifyResponse{Results: results}, nil
+	}
+
+	return nil, fmt.Errorf("无法解析批量分类响应: %s", content)
+}
+
+// ClassifyItemWithCategories 对RSS文章进行AI分类
+// categories: 可用的类别列表
 // keywordOnly: 如果为true，只进行关键词过滤，不调用AI
-func (c *LLMClient) ClassifyItem(item models.Item, strategy *models.FilterStrategy, keywordOnly bool) (*FilterResponse, error) {
+func (c *LLMClient) ClassifyItemWithCategories(item models.Item, strategy *models.ClassifyStrategy, categories []models.Category, keywordOnly bool) (*ClassifyResponse, error) {
 	// 先检查关键词过滤
 	if strategy != nil {
 		// 检查保留关键词
 		hasKeepKeyword := false
-		matchedKeepKeyword := ""
 		for _, keyword := range strategy.KeepKeywords {
 			if containsKeyword(item.Title, keyword) || containsKeyword(item.Description, keyword) {
 				hasKeepKeyword = true
-				matchedKeepKeyword = keyword
 				break
 			}
 		}
@@ -101,36 +259,28 @@ func (c *LLMClient) ClassifyItem(item models.Item, strategy *models.FilterStrate
 		// 白名单模式：仅保留包含保留关键词的文章
 		if strategy.IsWhitelistMode() {
 			if hasKeepKeyword {
-				return &FilterResponse{
-					IsFiltered: false,
-					Confidence: 1.0,
-					Reason:     fmt.Sprintf("白名单模式：包含保留关键词 [%s]", matchedKeepKeyword),
+				return &ClassifyResponse{
+					Category:   "_keep",
 				}, nil
 			}
 			// 白名单模式下，不包含保留关键词的文章全部过滤
-			return &FilterResponse{
-				IsFiltered: true,
-				Confidence: 1.0,
-				Reason:     "白名单模式：不包含任何保留关键词",
+			return &ClassifyResponse{
+				Category:   "_filtered",
 			}, nil
 		}
 
 		// 非白名单模式：包含保留关键词的文章直接保留
 		if hasKeepKeyword {
-			return &FilterResponse{
-				IsFiltered: false,
-				Confidence: 1.0,
-				Reason:     fmt.Sprintf("包含保留关键词: %s", matchedKeepKeyword),
+			return &ClassifyResponse{
+				Category:   "_keep",
 			}, nil
 		}
 
 		// 检查过滤关键词
 		for _, keyword := range strategy.FilterKeywords {
 			if containsKeyword(item.Title, keyword) || containsKeyword(item.Description, keyword) {
-				return &FilterResponse{
-					IsFiltered: true,
-					Confidence: 1.0,
-					Reason:     fmt.Sprintf("包含过滤关键词: %s", keyword),
+				return &ClassifyResponse{
+					Category:   "_filtered",
 				}, nil
 			}
 		}
@@ -138,15 +288,20 @@ func (c *LLMClient) ClassifyItem(item models.Item, strategy *models.FilterStrate
 
 	// 如果只需要关键词过滤，不调用AI
 	if keywordOnly {
-		return &FilterResponse{
-			IsFiltered: false,
-			Confidence: 0,
-			Reason:     "关键词过滤未命中",
+		return &ClassifyResponse{
+			Category:   "",
 		}, nil
 	}
 
 	// 构建文章内容
 	content := buildItemContent(item)
+
+	// 构建类别信息
+	var categoryInfo strings.Builder
+	categoryInfo.WriteString("可用类别：\n")
+	for _, cat := range categories {
+		categoryInfo.WriteString(fmt.Sprintf("- %s (%s): %s\n", cat.ID, cat.Name, cat.Description))
+	}
 
 	// 获取系统提示词
 	systemPrompt := c.config.GetSystemPrompt()
@@ -155,17 +310,26 @@ func (c *LLMClient) ClassifyItem(item models.Item, strategy *models.FilterStrate
 	}
 
 	// 构建请求
+	systemContent := systemPrompt + "\n\n" + categoryInfo.String()
 	reqBody := ChatRequest{
 		Model: c.config.GetModel(),
 		Messages: []ChatMessage{
-			{Role: "system", Content: systemPrompt},
+			{Role: "system", Content: systemContent},
 			{Role: "user", Content: content},
 		},
 		Temperature: c.config.GetTemperature(),
 		MaxTokens:   c.config.GetMaxTokens(),
-		ResponseFormat: &ResponseFormat{
+	}
+
+	// 某些 API (如 OpenAI, Ark) 要求开启 json_object 时，提示词中必须包含 "json" 字样
+	// 且只有当提示词明确要求 JSON 时，开启此模式才有意义
+	if strings.Contains(strings.ToLower(systemContent), "json") || strings.Contains(strings.ToLower(content), "json") {
+		reqBody.ResponseFormat = &ResponseFormat{
 			Type: "json_object",
-		},
+		}
+	} else {
+		// 如果不要求 JSON 格式，则显式设置为 nil 或不设置，以支持返回纯文本 ID
+		reqBody.ResponseFormat = nil
 	}
 
 	jsonData, err := json.Marshal(reqBody)
@@ -207,9 +371,9 @@ func (c *LLMClient) ClassifyItem(item models.Item, strategy *models.FilterStrate
 		return nil, fmt.Errorf("API未返回有效响应")
 	}
 
-	// 解析过滤结果
+	// 解析分类结果
 	responseContent := chatResp.Choices[0].Message.Content
-	return parseFilterResponse(responseContent)
+	return parseClassifyResponse(responseContent)
 }
 
 // buildItemContent 构建文章内容用于分类
@@ -219,18 +383,13 @@ func buildItemContent(item models.Item) string {
 	content.WriteString(item.Title)
 	content.WriteString("\n")
 
-	if item.Source != "" {
-		content.WriteString("来源: ")
-		content.WriteString(item.Source)
-		content.WriteString("\n")
-	}
-
 	if item.Description != "" {
 		// 移除HTML标签
 		desc := stripHTML(item.Description)
-		// 限制长度
-		if len(desc) > 2000 {
-			desc = desc[:2000] + "..."
+		// 限制长度（使用配置的最大描述长度）
+		maxDescLen := globals.RssUrls.AIClassify.GetMaxDescLength()
+		if len(desc) > maxDescLen {
+			desc = desc[:maxDescLen] + "..."
 		}
 		content.WriteString("内容: ")
 		content.WriteString(desc)
@@ -255,26 +414,83 @@ func containsKeyword(text, keyword string) bool {
 	return strings.Contains(strings.ToLower(text), strings.ToLower(keyword))
 }
 
-// parseFilterResponse 解析过滤响应
-func parseFilterResponse(content string) (*FilterResponse, error) {
-	// 移除可能的代码块标记
-	content = stripCodeFences(content)
-
-	var resp FilterResponse
-	if err := json.Unmarshal([]byte(content), &resp); err != nil {
-		// 尝试解析数组格式（某些模型可能返回数组）
-		var respArray []FilterResponse
-		if err2 := json.Unmarshal([]byte(content), &respArray); err2 == nil && len(respArray) > 0 {
-			return &respArray[0], nil
+// parseClassifyResponse 解析分类响应
+func parseClassifyResponse(content string) (*ClassifyResponse, error) {
+	// 尝试从中提取 JSON
+	jsonStr := extractJSON(content)
+	
+	// 如果提取到了 JSON，尝试解析
+	if jsonStr != "" {
+		var resp ClassifyResponse
+		if err := json.Unmarshal([]byte(jsonStr), &resp); err == nil {
+			if resp.Category != "" {
+				return &resp, nil
+			}
 		}
-		return nil, fmt.Errorf("解析过滤响应失败: %w, 内容: %s", err, content)
+		
+		// 尝试解析数组格式（某些模型可能返回数组）
+		var respArray []ClassifyResponse
+		if err := json.Unmarshal([]byte(jsonStr), &respArray); err == nil && len(respArray) > 0 {
+			if respArray[0].Category != "" {
+				return &respArray[0], nil
+			}
+		}
 	}
 
-	return &resp, nil
+	// 如果 JSON 解析失败，或者提取不到 JSON，降级到纯文本处理
+	// 移除可能存在的引号和空白
+	content = strings.Trim(strings.TrimSpace(content), "\"`")
+	if content != "" && len(content) < 100 {
+		return &ClassifyResponse{
+			Category:   content,
+		}, nil
+	}
+
+	return nil, fmt.Errorf("无法从响应中解析有效的分类信息: %s", content)
 }
 
-// stripCodeFences 移除代码块标记
+// extractJSON 尝试从文本中提取 JSON 部分
+func extractJSON(s string) string {
+	s = strings.TrimSpace(s)
+	
+	// 如果本身就是 JSON
+	if strings.HasPrefix(s, "{") && strings.HasSuffix(s, "}") {
+		return s
+	}
+	if strings.HasPrefix(s, "[") && strings.HasSuffix(s, "]") {
+		return s
+	}
+
+	// 查找 ```json ... ```
+	re := regexp.MustCompile("(?s)```(?:json)?\\s*(.*?)\\s*```")
+	if matches := re.FindStringSubmatch(s); len(matches) > 1 {
+		return strings.TrimSpace(matches[1])
+	}
+
+	// 查找第一个 { 和最后一个 }
+	start := strings.Index(s, "{")
+	end := strings.LastIndex(s, "}")
+	if start != -1 && end != -1 && end > start {
+		return s[start : end+1]
+	}
+
+	// 查找第一个 [ 和最后一个 ]
+	start = strings.Index(s, "[")
+	end = strings.LastIndex(s, "]")
+	if start != -1 && end != -1 && end > start {
+		return s[start : end+1]
+	}
+
+	return ""
+}
+
+// stripCodeFences 移除代码块标记 (保留此函数以兼容其他地方的调用，但建议内部使用 extractJSON)
 func stripCodeFences(s string) string {
+	extracted := extractJSON(s)
+	if extracted != "" {
+		return extracted
+	}
+	
 	s = strings.TrimSpace(s)
 	// 移除 ```json 和 ``` 标记
 	if strings.HasPrefix(s, "```json") {
@@ -288,187 +504,215 @@ func stripCodeFences(s string) string {
 	return strings.TrimSpace(s)
 }
 
-// filterResult AI过滤结果
-type filterResult struct {
+// classifyResult AI分类结果
+type classifyResult struct {
 	index      int
 	item       models.Item
-	isFiltered bool
+	category   string
 	fromCache  bool
 	err        error
-	confidence float64
-	reason     string
 }
 
-// FilterItems 过滤Feed中的Items（并行处理）
-func FilterItems(items []models.Item, rssURL string) []models.Item {
-	config := globals.RssUrls.AIFilter
-	strategy := getFilterStrategy(rssURL)
+// ClassifyItems 对Feed中的Items进行AI分类（并行处理 + 批量请求）
+// 返回带有分类信息的Items
+func ClassifyItems(items []models.Item, rssURL string) []models.Item {
+	config := globals.RssUrls.AIClassify
+	strategy := getClassifyStrategy(rssURL)
 
 	// 检查是否只使用关键词过滤（不使用AI）
 	useAI := ShouldUseAI(rssURL)
 	keywordOnly := !useAI
 
 	client := NewLLMClient(config)
-	threshold := config.GetThreshold()
-	if strategy != nil {
-		threshold = strategy.GetThreshold(threshold)
+
+	// 获取可用的类别列表
+	categories := config.GetCategories(&globals.RssUrls)
+	// 如果源配置了绑定类别，只使用绑定的类别
+	if strategy != nil && len(strategy.BoundCategories) > 0 {
+		boundCats := make([]models.Category, 0)
+		boundMap := make(map[string]bool)
+		for _, id := range strategy.BoundCategories {
+			boundMap[id] = true
+		}
+		for _, cat := range categories {
+			if boundMap[cat.ID] {
+				boundCats = append(boundCats, cat)
+			}
+		}
+		if len(boundCats) > 0 {
+			categories = boundCats
+		} else {
+			log.Printf("[分类警告] 源 [%s]: 配置的绑定类别未匹配到任何有效类别，将使用所有类别", rssURL)
+		}
+	}
+	
+	// 检查是否有可用的类别
+	if len(categories) == 0 {
+		log.Printf("[分类错误] 源 [%s]: 没有可用的分类类别，跳过分类", rssURL)
+		return items
 	}
 
-	// 获取并发数
-	concurrency := config.GetConcurrency()
-	if concurrency > len(items) {
-		concurrency = len(items)
+	// 最终结果列表（保持顺序）
+	finalItems := make([]models.Item, len(items))
+	copy(finalItems, items)
+
+	// 待处理任务列表
+	type classifyTask struct {
+		index int
+		item  models.Item
 	}
+	pendingTasks := make([]classifyTask, 0)
+
+	// 1. 先检查缓存
+	cacheHits := 0
+	globals.ClassifyCacheLock.RLock()
+	for i, item := range items {
+		cacheEntry, cached := globals.ClassifyCache[item.Link]
+		if cached && cacheEntry.Category != "" {
+			finalItems[i].Category = cacheEntry.Category
+			cacheHits++
+		} else {
+			pendingTasks = append(pendingTasks, classifyTask{index: i, item: item})
+		}
+	}
+	globals.ClassifyCacheLock.RUnlock()
+
+	// 如果没有待处理任务，直接返回
+	if len(pendingTasks) == 0 {
+		return applyFiltersAndReturn(finalItems, strategy, rssURL, 0, 0, cacheHits)
+	}
+
+	// 2. 只有关键词过滤的情况，不需要AI，直接在本地处理
+	if keywordOnly {
+		for _, task := range pendingTasks {
+			resp, _ := client.ClassifyItemWithCategories(task.item, strategy, categories, true)
+			finalItems[task.index].Category = resp.Category
+		}
+		return applyFiltersAndReturn(finalItems, strategy, rssURL, len(pendingTasks), 0, cacheHits)
+	}
+
+	// 3. AI 批量处理
+	// 每次批量处理的数量 (Batch Size)
+	// 可以根据模型限制调整，建议 5-10
+	const batchSize = 5
+	
+	// 计算需要的批次数量
+	numBatches := (len(pendingTasks) + batchSize - 1) / batchSize
+	
+	// 并发控制通道 (控制同时进行的 HTTP 请求数)
+	concurrency := config.GetConcurrency()
 	if concurrency <= 0 {
 		concurrency = 1
 	}
-
-	// 创建工作通道和结果通道
-	jobChan := make(chan struct {
-		index int
-		item  models.Item
-	}, len(items))
-	resultChan := make(chan filterResult, len(items))
-
-	// 启动worker goroutines
+	sem := make(chan struct{}, concurrency)
+	
 	var wg sync.WaitGroup
-	for i := 0; i < concurrency; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for job := range jobChan {
-				result := filterResult{
-					index: job.index,
-					item:  job.item,
-				}
-
-				// 先检查缓存
-				globals.FilterCacheLock.RLock()
-				cacheEntry, cached := globals.FilterCache[job.item.Link]
-				globals.FilterCacheLock.RUnlock()
-
-				if cached {
-					// 使用缓存结果
-					result.isFiltered = cacheEntry.IsFiltered
-					result.fromCache = true
-					if result.isFiltered {
-						log.Printf("[过滤命中-来自缓存] 文章 [%s]", job.item.Title)
-					}
-				} else {
-					// 没有缓存，调用过滤逻辑（带重试机制）
-					const maxRetries = 3
-					const retryDelay = 3 * time.Second
-					
-					var resp *FilterResponse
-					var lastErr error
-					
-					for attempt := 1; attempt <= maxRetries; attempt++ {
-						resp, lastErr = client.ClassifyItem(job.item, strategy, keywordOnly)
-						if lastErr == nil {
-							break
-						}
-						
-						if attempt < maxRetries {
-							log.Printf("[过滤重试] 文章 [%s]: 第 %d 次尝试失败: %v，%d秒后重试...", 
-								job.item.Title, attempt, lastErr, int(retryDelay.Seconds()))
-							time.Sleep(retryDelay)
-						}
-					}
-					
-					if lastErr != nil {
-						result.err = lastErr
-						log.Printf("[过滤失败] 文章 [%s]: 已重试 %d 次，最终失败: %v", job.item.Title, maxRetries, lastErr)
-						// 失败后不存入缓存，下次源更新时将重新处理
-					} else {
-						result.isFiltered = resp.IsFiltered && resp.Confidence >= threshold
-						result.confidence = resp.Confidence
-						result.reason = resp.Reason
-
-						if result.isFiltered {
-							log.Printf("[过滤命中-新处理] 文章 [%s]: %s (置信度: %.2f)", job.item.Title, resp.Reason, resp.Confidence)
-						} else if resp.Confidence > 0 {
-							// 即使没被过滤，如果是新处理的且有置信度，也可以选择性记录（可选）
-							// log.Printf("[AI过滤通过-新处理] 文章 [%s]: %s (置信度: %.2f)", job.item.Title, resp.Reason, resp.Confidence)
-						}
-
-						// 成功后存入缓存
-						globals.FilterCacheLock.Lock()
-						globals.FilterCache[job.item.Link] = models.FilterCacheEntry{
-							IsFiltered: result.isFiltered,
-						}
-						globals.FilterCacheLock.Unlock()
-						
-						// 标记数据已变更，需要持久化
-						MarkDataChanged()
-					}
-				}
-
-				resultChan <- result
-			}
-		}()
-	}
-
-	// 发送所有任务
-	for i, item := range items {
-		jobChan <- struct {
-			index int
-			item  models.Item
-		}{index: i, item: item}
-	}
-	close(jobChan)
-
-	// 等待所有worker完成
-	go func() {
-		wg.Wait()
-		close(resultChan)
-	}()
-
-	// 收集结果并按原始顺序排序
-	results := make([]filterResult, 0, len(items))
-	for result := range resultChan {
-		results = append(results, result)
-	}
-
-	// 按索引排序保持原顺序
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].index < results[j].index
-	})
-
-	// 统计并构建最终结果
-	filteredItems := make([]models.Item, 0, len(items))
-	cacheHits := 0
+	var mu sync.Mutex // 保护 finalItems 和统计数据
+	
 	newItems := 0
-	filteredByCache := 0
-	filteredByAI := 0
 	failedItems := 0
-
-	for _, result := range results {
-		if result.fromCache {
-			cacheHits++
-			if result.isFiltered {
-				filteredByCache++
-				continue
-			}
-		} else if result.err != nil {
-			failedItems++
-			// 过滤失败时保留文章
-			filteredItems = append(filteredItems, result.item)
-			continue
-		} else {
-			newItems++
-			if result.isFiltered {
-				filteredByAI++
-				continue
-			}
+	
+	// 分批处理
+	for i := 0; i < numBatches; i++ {
+		start := i * batchSize
+		end := start + batchSize
+		if end > len(pendingTasks) {
+			end = len(pendingTasks)
 		}
+		
+		batchTasks := pendingTasks[start:end]
+		
+		wg.Add(1)
+		sem <- struct{}{} // 获取信号量
+		
+		go func(tasks []classifyTask) {
+			defer wg.Done()
+			defer func() { <-sem }() // 释放信号量
+			
+			// 构建当前批次的 map
+			batchItemsMap := make(map[int]models.Item)
+			for _, t := range tasks {
+				batchItemsMap[t.index] = t.item
+			}
+			
+			// 调用批量分类接口
+			var resp *BatchClassifyResponse
+			var err error
+			
+			// 重试机制
+			const maxRetries = 3
+			for attempt := 1; attempt <= maxRetries; attempt++ {
+				resp, err = client.ClassifyBatchItems(batchItemsMap, strategy, categories)
+				if err == nil {
+					break
+				}
+				if attempt < maxRetries {
+					time.Sleep(2 * time.Second)
+				}
+			}
+			
+			mu.Lock()
+			defer mu.Unlock()
+			
+			if err != nil {
+				log.Printf("[分类失败] 批量请求失败 (包含 %d 篇文章): %v", len(tasks), err)
+				failedItems += len(tasks)
+				return
+			}
+			
+			// 处理响应
+			for _, t := range tasks {
+				idxStr := fmt.Sprintf("%d", t.index)
+				
+				// 查找结果 (先尝试 string key)
+				categoryID, ok := resp.Results[idxStr]
+				if !ok {
+					// 某些模型可能会返回不纯的 key, 尝试遍历查找（如果 key 包含 index）
+					// 这里简单处理：如果找不到，记为失败
+					failedItems++
+					continue
+				}
+				
+				// 应用结果
+				finalItems[t.index].Category = categoryID
+				newItems++
+				
+				if categoryID != "" && categoryID != "_keep" && categoryID != "_filtered" {
+					log.Printf("[分类完成] 文章 [%s]: %s", finalItems[t.index].Title, categoryID)
+				}
+				
+				// 存入缓存
+				globals.ClassifyCacheLock.Lock()
+				globals.ClassifyCache[finalItems[t.index].Link] = models.ClassifyCacheEntry{
+					Category: categoryID,
+				}
+				globals.ClassifyCacheLock.Unlock()
+			}
+			
+			// 标记数据已变更
+			MarkDataChanged()
+			
+		}(batchTasks)
+	}
+	
+	wg.Wait()
+	
+	return applyFiltersAndReturn(finalItems, strategy, rssURL, newItems, failedItems, cacheHits)
+}
 
-		filteredItems = append(filteredItems, result.item)
+// applyFiltersAndReturn 应用后续过滤并返回
+func applyFiltersAndReturn(items []models.Item, strategy *models.ClassifyStrategy, rssURL string, newItems, failedItems, cacheHits int) []models.Item {
+	// 统计输出
+	if newItems > 0 || failedItems > 0 {
+		log.Printf("[分类统计] 源 [%s]: 新分类 %d 篇，失败 %d 篇 | 缓存命中 %d 篇", 
+			rssURL, newItems, failedItems, cacheHits)
 	}
 
-	// 只在有新判断时展示统计
-	if newItems > 0 || failedItems > 0 {
-		log.Printf("[过滤统计] 源 [%s]: 并发数 %d，新判断 %d 篇，过滤 %d 篇，保留 %d 篇 | 缓存命中 %d 篇（其中过滤 %d 篇）", 
-			rssURL, concurrency, newItems, filteredByAI, newItems-filteredByAI, cacheHits, filteredByCache)
+	filteredItems := items
+
+	// 应用类别黑白名单过滤
+	if strategy != nil && (len(strategy.CategoryWhitelist) > 0 || len(strategy.CategoryBlacklist) > 0) {
+		filteredItems = applyCategoryFilter(filteredItems, strategy)
 	}
 
 	// 应用脚本规则过滤
@@ -486,25 +730,59 @@ func FilterItems(items []models.Item, rssURL string) []models.Item {
 			}
 		}
 	}
-
+	
 	return filteredItems
 }
 
-// getFilterStrategy 获取指定URL的过滤策略
-func getFilterStrategy(rssURL string) *models.FilterStrategy {
+// applyCategoryFilter 应用类别黑白名单过滤
+func applyCategoryFilter(items []models.Item, strategy *models.ClassifyStrategy) []models.Item {
+	if strategy == nil {
+		return items
+	}
+
+	// 构建白名单和黑名单映射
+	whitelistMap := make(map[string]bool)
+	blacklistMap := make(map[string]bool)
+	for _, cat := range strategy.CategoryWhitelist {
+		whitelistMap[cat] = true
+	}
+	for _, cat := range strategy.CategoryBlacklist {
+		blacklistMap[cat] = true
+	}
+
+	filtered := make([]models.Item, 0, len(items))
+	for _, item := range items {
+		// 如果有白名单，只保留白名单中的类别
+		if len(whitelistMap) > 0 {
+			if whitelistMap[item.Category] {
+				filtered = append(filtered, item)
+			}
+			continue
+		}
+		
+		// 如果有黑名单，过滤掉黑名单中的类别
+		if len(blacklistMap) > 0 {
+			if !blacklistMap[item.Category] {
+				filtered = append(filtered, item)
+			}
+			continue
+		}
+		
+		filtered = append(filtered, item)
+	}
+
+	if len(items) != len(filtered) {
+		log.Printf("[类别过滤] 过滤前 %d 篇，过滤后 %d 篇", len(items), len(filtered))
+	}
+
+	return filtered
+}
+
+// getClassifyStrategy 获取指定URL的分类策略
+func getClassifyStrategy(rssURL string) *models.ClassifyStrategy {
 	for _, source := range globals.RssUrls.Sources {
 		if source.URL == rssURL {
-			return source.Filter
-		}
-		if source.IsFolder() {
-			for _, feedURL := range source.Urls {
-				if feedURL.URL == rssURL {
-					if feedURL.Filter != nil {
-						return feedURL.Filter
-					}
-					return source.Filter
-				}
-			}
+			return source.Classify
 		}
 	}
 	return nil
@@ -512,10 +790,10 @@ func getFilterStrategy(rssURL string) *models.FilterStrategy {
 
 // ShouldFilter 检查是否应该启用过滤（关键词或AI或脚本）
 func ShouldFilter(rssURL string) bool {
-	config := globals.RssUrls.AIFilter
+	config := globals.RssUrls.AIClassify
 
 	// 获取该源的特定策略
-	strategy := getFilterStrategy(rssURL)
+	strategy := getClassifyStrategy(rssURL)
 	if strategy == nil {
 		return false
 	}
@@ -530,7 +808,7 @@ func ShouldFilter(rssURL string) bool {
 		return true
 	}
 
-	// 检查是否启用AI过滤（需要全局AI过滤启用且有API Key）
+	// 检查是否启用AI分类（需要全局AI分类启用且有API Key）
 	if config.Enabled && config.APIKey != "" && strategy.IsAIEnabled() {
 		return true
 	}
@@ -538,14 +816,14 @@ func ShouldFilter(rssURL string) bool {
 	return false
 }
 
-// ShouldUseAI 检查是否应该使用AI过滤
+// ShouldUseAI 检查是否应该使用AI分类
 func ShouldUseAI(rssURL string) bool {
-	config := globals.RssUrls.AIFilter
+	config := globals.RssUrls.AIClassify
 	if !config.Enabled || config.APIKey == "" {
 		return false
 	}
 
-	strategy := getFilterStrategy(rssURL)
+	strategy := getClassifyStrategy(rssURL)
 	if strategy == nil {
 		return false
 	}
@@ -563,7 +841,7 @@ func ApplyScriptFilter(items []models.Item, scriptContent string, rssURL string)
 	}
 
 	// 创建超时 context（复用 AI 的超时配置）
-	timeout := time.Duration(globals.RssUrls.AIFilter.GetTimeout()) * time.Second
+	timeout := time.Duration(globals.RssUrls.AIClassify.GetTimeout()) * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 

@@ -1,27 +1,17 @@
 {
     "sources": [
         {
-            "url": "https://bf.zzxworld.com/feed.xml",
-            "name": "BlogFinder",
-            "showPubDate": true
-        },
-        {
-            "name": "虎嗅网",
-            "icon": "https://www.huxiu.com/favicon.ico",
-            "urls": [
-                {
-                    "url": "https://open-v2.huxiu.com/news/getnewslist?HUXIUOPENID=chouti\u0026HUXIUOPENKEY=ed2f121cbbf65b726998f689d1aebdc2\u0026data_type=xml\u0026content=1.rss",
-                    "name": "虎嗅网APP"
-                },
-                {
-                    "url": "https://www.huxiu.com/rss/0.xml"
-                }
-            ]
+            "url": "https://rsshub.rssforever.com/163/exclusive/sd",
+            "name": "网易数读",
+            "icon": "https://img02.sogoucdn.com/app/a/200913/a51423369a5d5a02e23e02dbe7ef3ac2.png"
         },
         {
             "url": "https://rsshub.rssforever.com/telegram/channel/wxbyg",
             "name": "微信搬运工",
             "icon": "https://img02.sogoucdn.com/app/a/200913/1a4563815570b841d8ec1ba12c11da8a.png",
+            "classify": {
+                "aiEnabled": true
+            },
             "postProcess": {
                 "enabled": true,
                 "mode": "script",
@@ -31,80 +21,97 @@
             }
         },
         {
-            "url": "https://rsshub.rssforever.com/163/exclusive/sd",
-            "name": "网易数读",
-            "icon": "https://img02.sogoucdn.com/app/a/200913/a51423369a5d5a02e23e02dbe7ef3ac2.png"
-        },
-        {
             "url": "https://rss.mifaw.com/articles/5c8bb11a3c41f61efd36683e/5c919d543882afa09dff3fa3",
             "name": "知乎热榜",
             "icon": "https://static.zhihu.com/heifetz/favicon.ico",
-            "filter": {
-                "aiEnabled": false,
-                "customPrompt": "你是一个严格的内容分类器。判断给定的RSS文章是否为推广内容、软文或游戏、娱乐圈、军事、体育、影音、台湾等相关内容。请返回JSON格式：{\"is_filtered\": boolean, \"confidence\": 0-1之间的浮点数, \"reason\": \"过滤原因\"}",
-                "threshold": 0.8
-            },
-            "group": "社区"
+            "classify": {
+                "aiEnabled": true,
+                "boundCategories": [
+                    "default",
+                    "not_interested"
+                ]
+            }
         },
         {
-            "url": "https://linux.do/latest.rss",
-            "name": "LINUX DO",
-            "cacheItems": 80,
-            "group": "社区"
-        },
-        {
-            "name": "少数派",
-            "icon": "https://th.bing.com/th/id/ODF.OzmBrsWvX2EyzEutvQjbDw?w=32\u0026h=32\u0026qlt=90\u0026pcl=fffffa\u0026o=6\u0026pid=1.2",
-            "urls": [
-                {
-                    "url": "https://rsshub.rssforever.com/sspai/matrix",
-                    "name": "Matrix"
-                },
-                {
-                    "url": "https://tgmeng.com/media/shaoshupai/rss.xml",
-                    "name": "热门",
-                    "ignoreOriginalPubDate": true
-                }
-            ],
-            "group": "社区"
+            "url": "https://bf.zzxworld.com/feed.xml",
+            "name": "BlogFinder",
+            "showPubDate": true
         },
         {
             "url": "https://hostloc.com/forum.php?mod=rss\u0026fid=45\u0026auth=389ec3vtQanmEuRoghE%2FpZPWnYCPmvwWgSa7RsfjbQ%2BJpA%2F6y6eHAx%2FKqtmPOg",
             "name": "全球主机交流论坛",
             "icon": "https://hostloc.com/favicon.ico",
-            "filter": {
-                "filterKeywords": [
-                    "招聘",
-                    "广告"
-                ],
-                "keepKeywords": [
-                    "开源",
-                    "教程"
-                ]
-            },
-            "cacheItems": 50,
-            "group": "社区"
+            "cacheItems": 50
+        },
+        {
+            "url": "https://linux.do/latest.rss",
+            "name": "LINUX DO",
+            "cacheItems": 80
         },
         {
             "url": "https://rsshub.rssforever.com/v2ex/tab/hot?limit=35",
             "name": "V2EX",
-            "icon": "https://v2ex.com/favicon.ico",
-            "group": "社区"
-        },
+            "icon": "https://v2ex.com/favicon.ico"
+        }
+    ],
+    "folders": [
         {
-            "name": "轻松一刻",
-            "icon": "https://th.bing.com/th/id/ODF.XCBEBSJSE3TYEQI10xU6Dw?w=32\u0026h=32\u0026qlt=93\u0026pcl=fffffa\u0026o=6\u0026pid=1.2",
-            "urls": [
+            "id": "folder_1",
+            "name": "文件夹",
+            "entries": [
                 {
-                    "url": "https://feedx.net/rss/163easy.xml",
-                    "name": "网易"
+                    "sourceUrl": "https://rsshub.rssforever.com/telegram/channel/wxbyg"
                 },
                 {
-                    "url": "http://hornydragon.blogspot.com/feeds/posts/default",
-                    "name": "好色龍"
+                    "sourceUrl": "https://rsshub.rssforever.com/163/exclusive/sd"
                 }
-            ],
-            "group": "FUN"
+            ]
+        }
+    ],
+    "layoutGroups": [
+        {
+            "id": "group_default",
+            "name": "关注",
+            "items": [
+                {
+                    "type": "source",
+                    "sourceUrl": "https://bf.zzxworld.com/feed.xml"
+                },
+                {
+                    "type": "source",
+                    "sourceUrl": "https://rss.mifaw.com/articles/5c8bb11a3c41f61efd36683e/5c919d543882afa09dff3fa3"
+                },
+                {
+                    "type": "folder",
+                    "folderId": "folder_1"
+                },
+                {
+                    "type": "source",
+                    "sourceUrl": "https://rsshub.rssforever.com/telegram/channel/wxbyg"
+                },
+                {
+                    "type": "source",
+                    "sourceUrl": "https://rsshub.rssforever.com/163/exclusive/sd"
+                }
+            ]
+        },
+        {
+            "id": "group_community",
+            "name": "社区",
+            "items": [
+                {
+                    "type": "source",
+                    "sourceUrl": "https://linux.do/latest.rss"
+                },
+                {
+                    "type": "source",
+                    "sourceUrl": "https://hostloc.com/forum.php?mod=rss\u0026fid=45\u0026auth=389ec3vtQanmEuRoghE%2FpZPWnYCPmvwWgSa7RsfjbQ%2BJpA%2F6y6eHAx%2FKqtmPOg"
+                },
+                {
+                    "type": "source",
+                    "sourceUrl": "https://rsshub.rssforever.com/v2ex/tab/hot?limit=35"
+                }
+            ]
         }
     ],
     "schedules": [
@@ -117,21 +124,96 @@
     ],
     "password": "1234",
     "sessionDuration": 720,
-    "aiFilter": {
-        "enabled": true,
+    "aiClassify": {
+        "enabled": false,
         "apiKey": "",
         "model": "doubao-seed-1-8-251228",
-        "systemPrompt": "你是一个严格的内容分类器。判断给定的RSS文章是否为广告、推广内容、软文或低质量内容。请返回JSON格式：{\"is_filtered\": boolean, \"confidence\": 0-1之间的浮点数, \"reason\": \"过滤原因\"}",
-        "threshold": 0.7,
+        "systemPrompt": "你是一个内容分类器。根据给定的类别列表，判断RSS文章最适合归入哪个类别。",
         "maxTokens": 500,
         "temperature": 0.1,
         "timeout": 30,
-        "concurrency": 5
+        "concurrency": 5,
+        "maxDescLength": 2000,
+        "categoryPackages": [
+            {
+                "id": "pkg_1",
+                "name": "公众号",
+                "categories": [
+                    {
+                        "id": "lifestyle",
+                        "name": "生活方式",
+                        "description": "聚焦当代生活方式、情感、消费现象、群体行为、社会与文化现象等",
+                        "color": "#67C23A"
+                    },
+                    {
+                        "id": "tech",
+                        "name": "科技互联网",
+                        "description": "聚焦科技前沿、AI技术发展及应用、数码等",
+                        "color": "#409EFF"
+                    },
+                    {
+                        "id": "business",
+                        "name": "商业经济",
+                        "description": "关注公司动态、行业趋势、商业投资等",
+                        "color": "#E6A23C"
+                    },
+                    {
+                        "id": "humanities",
+                        "name": "人文视野",
+                        "description": "关注特定区域的发展、宏观经济现象与地域文化现象，以及国际关系、地缘政治、外国社会动态及历史事件",
+                        "color": "#909399"
+                    },
+                    {
+                        "id": "knowledge",
+                        "name": "科普知识",
+                        "description": "以趣味或深度视角解释自然、科学、历史、健康等领域的知识",
+                        "color": "#9B59B6"
+                    },
+                    {
+                        "id": "stories",
+                        "name": "人物故事",
+                        "description": "涉及人物特写及深度故事报道",
+                        "color": "#F56C6C"
+                    },
+                    {
+                        "id": "social",
+                        "name": "社会评论",
+                        "description": "探讨广泛的社会议题、公共政策、历史反思等",
+                        "color": "#3498DB"
+                    },
+                    {
+                        "id": "promo",
+                        "name": "广告推销",
+                        "description": "软广/品牌/平台活动/宣传稿，带有明显的产品推广色彩，或明确为平台或品牌方的活动、调研或招聘/政经宣传（置信度大于0.9）",
+                        "color": "#E6A23C"
+                    },
+                    {
+                        "id": "uncategorized",
+                        "name": "未归类",
+                        "description": "非常明确无法归入其他类别的内容",
+                        "color": "#C0C4CC"
+                    }
+                ]
+            },
+            {
+                "id": "pkg_2",
+                "name": "知乎热榜",
+                "categories": [
+                    {
+                        "id": "default",
+                        "name": "默认",
+                        "description": "默认分类，包含所有未特别提及的内容",
+                        "color": "#409EFF"
+                    },
+                    {
+                        "id": "not_interested",
+                        "name": "不感兴趣",
+                        "description": "游戏、娱乐圈、军事、体育、影音、台湾等相关内容或推广内容、软文",
+                        "color": "#409EFF"
+                    }
+                ]
+            }
+        ]
     },
-    "groupOrder": [
-        "社区",
-        "关注",
-        "FUN"
-    ],
-    "defaultGroup": "关注"
+    "defaultGroup": "group_default"
 }

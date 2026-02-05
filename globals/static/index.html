@@ -7,8 +7,9 @@
   <title>Feedora</title>
   <meta name="description" content='Feedora，一个开源的RSS在线网页阅读器'>
   <meta name="keywords" content="<< .Keywords >>">
-  <meta name="anthor" content="srcrs">
+  <meta name="author" content="Skestars">
   <meta name="theme-color" content="#f5f5f5">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Feedora">
@@ -224,6 +225,19 @@
           top: -0.1px;
         }
 
+        .category-tag {
+          font-size: 9px;
+          color: #fff;
+          background-color: #909399;
+          display: inline-block;
+          padding: 1px 5px;
+          border-radius: 3px;
+          vertical-align: middle;
+          margin-left: 0.5em;
+          position: relative;
+          top: -1px;
+        }
+
         .pubdate-tag {
           font-size: 10px;
           color: #909399;
@@ -400,6 +414,125 @@
           }
         }
 
+        /* 分类类别管理移动端样式 - 非暗色模式 */
+        .mobile-category-list {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .mobile-category-card {
+          padding: 12px;
+          padding-top: 8px;
+          border: 1px solid #e4e7ed;
+          border-radius: 6px;
+          background-color: #fff;
+          position: relative;
+        }
+
+        .mobile-category-row {
+          display: flex;
+          align-items: center;
+          margin-bottom: 8px;
+          flex-wrap: nowrap;
+        }
+
+        .mobile-category-row:last-child {
+          margin-bottom: 0;
+        }
+
+        .mobile-category-row label {
+          width: 45px;
+          min-width: 45px;
+          font-size: 12px;
+          color: #606266;
+          flex-shrink: 0;
+          line-height: 28px;
+        }
+
+        .mobile-category-row .value {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .mobile-category-delete-btn {
+          position: absolute;
+          right: 4px;
+          top: 4px;
+          z-index: 10;
+          width: 28px;
+          height: 28px;
+          min-height: 28px;
+          padding: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #909399;
+          background: transparent;
+          border: none;
+        }
+
+        .mobile-category-delete-btn:hover {
+          color: #F56C6C;
+          background: rgba(245, 108, 108, 0.1);
+        }
+
+        /* 选择全选按钮分隔线 */
+        .select-all-option {
+          border-bottom: 1px solid #ebeef5;
+          margin-bottom: 4px;
+          text-align: center;
+        }
+
+        .category-group-header {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 8px;
+          color: #409EFF;
+          font-weight: bold;
+          font-size: 13px;
+        }
+
+        /* 分类下拉框分组分隔符样式 */
+        .category-group-divider {
+          padding: 8px 12px 4px 12px;
+          color: #909399;
+          font-size: 12px;
+          font-weight: 600;
+          background: linear-gradient(to bottom, #f5f7fa, #fff);
+          border-top: 1px solid #e4e7ed;
+          margin-top: 4px;
+        }
+
+        .category-group-divider:first-child {
+          border-top: none;
+          margin-top: 0;
+        }
+
+        /* el-option-group 分组样式增强 */
+        .el-select-dropdown .el-select-group__title {
+          font-weight: 600;
+          color: #606266;
+          font-size: 13px;
+          padding: 8px 20px 4px 20px;
+          background: linear-gradient(to bottom, #f5f7fa, #fff);
+          border-top: 1px solid #e4e7ed;
+        }
+
+        .el-select-dropdown .el-select-group:first-child .el-select-group__title {
+          border-top: none;
+        }
+
+        .el-select-dropdown .el-select-group .el-select-dropdown__item {
+          padding-left: 28px;
+        }
+
+        .el-select-dropdown .el-select-group .el-select-dropdown__item.select-all-option {
+          padding-left: 20px;
+          font-style: italic;
+        }
+
         << if .DarkMode>>body {
           background-color: #1a1a1a;
           color: #e0e0e0;
@@ -555,7 +688,43 @@
           background-color: #409EFF !important;
         }
 
-        /* 表格样式 */
+        /* 分类类别管理移动端样式 - 暗色模式覆盖 */
+        .mobile-category-card {
+          border: 1px solid #3a3a3a;
+          background-color: #2a2a2a;
+        }
+
+        .mobile-category-row label {
+          color: #999;
+        }
+
+        .mobile-category-delete-btn {
+          color: #999;
+        }
+
+        .mobile-category-delete-btn:hover {
+          color: #F56C6C;
+          background: rgba(245, 108, 108, 0.2);
+        }
+
+        .select-all-option {
+          border-bottom-color: #3a3a3a;
+        }
+
+        /* 分类下拉框分组分隔符样式 - 暗色模式 */
+        .category-group-divider {
+          background: linear-gradient(to bottom, #2a2a2a, #242424);
+          border-top-color: #3a3a3a;
+          color: #888;
+        }
+
+        /* el-option-group 分组样式 - 暗色模式 */
+        .el-select-dropdown .el-select-group__title {
+          background: linear-gradient(to bottom, #2a2a2a, #242424) !important;
+          border-top-color: #3a3a3a !important;
+          color: #999 !important;
+        }
+
         .el-table {
           background-color: #242424 !important;
           --el-table-bg-color: #242424 !important;
@@ -1108,38 +1277,38 @@
         .mobile-feed-list {
           display: flex;
           flex-direction: column;
-          gap: 15px;
+          gap: 12px;
           padding-bottom: 20px;
         }
 
         .mobile-feed-card {
           background: white;
           border-radius: 8px;
-          padding: 15px;
-          box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+          padding: 12px;
+          box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.05);
           border: 1px solid #ebeef5;
         }
 
         .mobile-card-header {
           font-weight: bold;
-          font-size: 16px;
-          margin-bottom: 12px;
+          font-size: 15px;
+          margin-bottom: 10px;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding-bottom: 10px;
+          padding-bottom: 8px;
           border-bottom: 1px solid #f0f0f0;
         }
 
         .mobile-card-row {
           display: flex;
-          margin-bottom: 8px;
-          font-size: 14px;
+          margin-bottom: 15px;
+          font-size: 13px;
           align-items: center;
         }
 
         .mobile-card-row label {
-          width: 50px;
+          width: 55px;
           color: #909399;
           flex-shrink: 0;
           font-weight: 500;
@@ -1155,11 +1324,11 @@
         .mobile-card-actions {
           display: flex;
           flex-wrap: wrap;
-          gap: 8px;
-          margin-top: 15px;
+          gap: 6px;
+          margin-top: 10px;
           justify-content: flex-end;
           border-top: 1px solid #f0f0f0;
-          padding-top: 12px;
+          padding-top: 10px;
         }
 
         << if .DarkMode>>.mobile-feed-card {
@@ -1336,7 +1505,7 @@
           display: flex;
           flex-wrap: wrap;
           gap: 5px;
-          justify-content: flex-start;
+          justify-content: center;
           align-items: center;
         }
 
@@ -1575,86 +1744,73 @@
     <el-dialog title="系统配置" v-model="showConfigModal" fullscreen :show-close="true">
       <div v-if="config" :style="{ padding: isPc ? '20px' : '10px', maxWidth: '1200px', margin: '0 auto' }">
         <el-tabs v-model="activeTab">
-          <!-- Feeds Tab -->
-          <el-tab-pane label="订阅源管理" name="feeds">
+          <!-- Sources Tab - 订阅源配置 -->
+          <el-tab-pane label="订阅源配置" name="sources">
             <div style="margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
-              <el-button type="primary" @click="addFeed">
+              <el-button type="primary" @click="addSource">
                 <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
                   style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;">
                   <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                 </svg>
                 添加订阅源
               </el-button>
-              <el-button type="success" @click="addFolder">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
-                  style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;">
-                  <path
-                    d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z" />
-                </svg>
-                添加文件夹
-              </el-button>
             </div>
 
             <!-- PC View -->
-            <el-table class="sources-table" v-if="isPc" :data="config.sources" style="width: 100%" row-key="_id" border
-              default-expand-all>
-              <el-table-column width="40">
-                <template #default>
-                  <div class="drag-handle" style="cursor: move; text-align: center; color: #909399;">
-                    ☰
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column prop="name" label="名称" width="200">
-                <template #default="scope">
-                  <el-input v-if="scope.row.editMode" v-model="scope.row.name" size="small"></el-input>
-                  <span v-else>{{ scope.row.name || (scope.row.urls ? '文件夹' : '未命名') }}</span>
-                </template>
-              </el-table-column>
-              <el-table-column prop="url" label="URL" min-width="300">
-                <template #default="scope">
-                  <el-input v-if="scope.row.editMode && !scope.row.urls" v-model="scope.row.url"
-                    size="small"></el-input>
-                  <span v-else>{{ scope.row.url }}</span>
-                  <div v-if="scope.row.urls">
-                    <el-tag size="mini" type="info">包含 {{ scope.row.urls.length }} 个源</el-tag>
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column prop="group" label="分组" width="150">
-                <template #default="scope">
-                  <el-input v-if="scope.row.editMode" v-model="scope.row.group" size="small"
-                    placeholder="默认: 关注"></el-input>
-                  <span v-else>{{ scope.row.group || '关注' }}</span>
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" width="300" fixed="right">
-                <template #default="scope">
-                  <div class="operation-container">
-                    <el-button-group>
-                      <el-button type="default" size="small" class="op-btn" @click="moveSourceUp(scope.$index)"
-                        :disabled="scope.$index === 0" title="上移">↑</el-button>
-                      <el-button type="default" size="small" class="op-btn" @click="moveSourceDown(scope.$index)"
-                        :disabled="scope.$index === config.sources.length - 1" title="下移">↓</el-button>
-                    </el-button-group>
+            <div v-if="isPc" style="max-width: 1100px; margin: 0 auto;">
+              <el-table ref="sourcesTable" class="sources-table" :data="config.sources" style="width: 100%"
+                row-key="_id" border>
+                <el-table-column width="40" type="index" align="center"></el-table-column>
+                <el-table-column prop="name" label="名称" width="130">
+                  <template #default="scope">
+                    <el-input v-if="scope.row.editMode" v-model="scope.row.name" size="small"></el-input>
+                    <span v-else>{{ scope.row.name || '未命名' }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="url" label="URL" min-width="200">
+                  <template #default="scope">
+                    <el-input v-if="scope.row.editMode" v-model="scope.row.url" size="small"></el-input>
+                    <span v-else>{{ scope.row.url }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="文件夹" width="200">
+                  <template #default="scope">
+                    <el-select v-if="scope.row.editMode" :model-value="getFoldersForSource(scope.row.url)"
+                      @update:model-value="val => handleFolderChange(scope.row, val)" size="small" placeholder="无"
+                      multiple collapse-tags>
+                      <el-option v-for="f in config.folders" :key="f.id" :label="f.name" :value="f.id"></el-option>
+                    </el-select>
+                    <span v-else>{{ getFolderNamesForSource(scope.row.url) || '' }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="分组" width="200" align="center" header-align="center">
+                  <template #default="scope">
+                    <el-select v-if="scope.row.editMode" :model-value="getGroupsForSource(scope.row.url)"
+                      @update:model-value="val => handleGroupChange(scope.row, val)" size="small" placeholder="未分组"
+                      multiple collapse-tags filterable allow-create default-first-option>
+                      <el-option v-for="g in getGroupOptions()" :key="g" :label="g" :value="g"></el-option>
+                    </el-select>
+                    <span v-else>{{ getGroupNamesForSource(scope.row.url) || '未分组' }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="260" fixed="right" align="center" header-align="center">
+                  <template #default="scope">
+                    <div class="operation-container">
+                      <el-button v-if="!scope.row.editMode" type="primary" size="small" plain class="op-btn"
+                        @click="enableEdit(scope.row)">编辑</el-button>
+                      <el-button v-else type="success" size="small" class="op-btn"
+                        @click="saveEdit(scope.row)">保存</el-button>
 
-                    <el-button v-if="!scope.row.editMode" type="primary" size="small" plain class="op-btn"
-                      @click="enableEdit(scope.row)">编辑</el-button>
-                    <el-button v-else type="success" size="small" class="op-btn"
-                      @click="saveEdit(scope.row)">保存</el-button>
+                      <el-button type="info" size="small" plain class="op-btn"
+                        @click="openFeedSettings(scope.row)">设置</el-button>
 
-                    <el-button type="info" size="small" plain class="op-btn"
-                      @click="openFeedSettings(scope.row)">设置</el-button>
-
-                    <el-button v-if="scope.row.urls" type="warning" size="small" plain class="op-btn"
-                      @click="manageFolder(scope.row)">内容</el-button>
-
-                    <el-button type="danger" size="small" plain class="op-btn"
-                      @click="removeSource(scope.$index)">×</el-button>
-                  </div>
-                </template>
-              </el-table-column>
-            </el-table>
+                      <el-button type="danger" size="small" plain class="op-btn"
+                        @click="removeSource(scope.$index)">删除</el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
 
             <!-- Mobile View -->
             <div v-else class="mobile-feed-list sources-list">
@@ -1672,6 +1828,134 @@
                 </el-button>
 
                 <div class="mobile-card-header" style="padding-right: 35px; justify-content: flex-start;">
+
+                  <span class="mobile-card-title"
+                    style="flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 5px;">
+                    <el-input v-if="item.editMode" v-model="item.name" size="small" placeholder="名称"></el-input>
+                    <span v-else>{{ item.name || '未命名' }}</span>
+                  </span>
+                </div>
+
+                <div class="mobile-card-row">
+                  <label>URL:</label>
+                  <div class="mobile-card-value">
+                    <el-input v-if="item.editMode" v-model="item.url" size="small" placeholder="URL"></el-input>
+                    <span v-else>{{ item.url }}</span>
+                  </div>
+                </div>
+
+                <div class="mobile-card-row">
+                  <label>文件夹:</label>
+                  <div class="mobile-card-value">
+                    <el-select v-if="item.editMode" :model-value="getFoldersForSource(item.url)"
+                      @update:model-value="val => handleFolderChange(item, val)" size="small" placeholder="无" multiple
+                      collapse-tags style="width: 100%;">
+                      <el-option v-for="f in config.folders" :key="f.id" :label="f.name" :value="f.id"></el-option>
+                    </el-select>
+                    <span v-else>{{ getFolderNamesForSource(item.url) || '无' }}</span>
+                  </div>
+                </div>
+
+                <div class="mobile-card-row">
+                  <label>分组:</label>
+                  <div class="mobile-card-value">
+                    <el-select v-if="item.editMode" :model-value="getGroupsForSource(item.url)"
+                      @update:model-value="val => handleGroupChange(item, val)" size="small" placeholder="未分组" multiple
+                      collapse-tags filterable allow-create default-first-option style="width: 100%;">
+                      <el-option v-for="g in getGroupOptions()" :key="g" :label="g" :value="g"></el-option>
+                    </el-select>
+                    <span v-else>{{ getGroupNamesForSource(item.url) || '未分组' }}</span>
+                  </div>
+                </div>
+
+                <div class="mobile-card-actions">
+                  <el-button v-if="!item.editMode" type="primary" size="mini" plain
+                    @click="enableEdit(item)">编辑</el-button>
+                  <el-button v-else type="success" size="mini" @click="saveEdit(item)">保存</el-button>
+
+                  <el-button type="info" size="mini" plain @click="openFeedSettings(item)">设置</el-button>
+                </div>
+              </div>
+            </div>
+          </el-tab-pane>
+
+          <!-- Folders Tab - 文件夹配置 -->
+          <el-tab-pane label="文件夹配置" name="folders">
+            <div style="margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+              <el-button type="primary" @click="addFolder">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+                  style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;">
+                  <path
+                    d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z" />
+                </svg>
+                添加文件夹
+              </el-button>
+            </div>
+
+            <!-- PC View -->
+            <div v-if="isPc" style="max-width: 900px; margin: 0 auto;">
+              <el-table ref="foldersTable" class="folders-table" :data="config.folders" style="width: 100%" row-key="id"
+                border>
+
+                <el-table-column prop="name" label="名称" min-width="130" align="center" header-align="center">
+                  <template #default="scope">
+                    <el-input v-if="scope.row.editMode" v-model="scope.row.name" size="small"></el-input>
+                    <span v-else>{{ scope.row.name || '未命名' }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="分组" width="150" align="center" header-align="center">
+                  <template #default="scope">
+                    <el-select v-if="scope.row.editMode" :model-value="getGroupsForFolder(scope.row.id)"
+                      @update:model-value="val => handleFolderGroupChange(scope.row, val)" size="small"
+                      placeholder="未分组" multiple collapse-tags filterable allow-create default-first-option>
+                      <el-option v-for="g in getGroupOptions()" :key="g" :label="g" :value="g"></el-option>
+                    </el-select>
+                    <span v-else>{{ getGroupNamesForFolder(scope.row.id) || '未分组' }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="条目数" width="100" align="center" header-align="center">
+                  <template #default="scope">
+                    <el-tag size="mini" type="info">{{ scope.row.entries ? scope.row.entries.length : 0 }} 个条目</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="300" fixed="right" align="center" header-align="center">
+                  <template #default="scope">
+                    <div class="operation-container">
+                      <el-button v-if="!scope.row.editMode" type="primary" size="small" plain class="op-btn"
+                        @click="enableEdit(scope.row)">编辑</el-button>
+                      <el-button v-else type="success" size="small" class="op-btn"
+                        @click="saveEdit(scope.row)">保存</el-button>
+
+                      <el-button type="warning" size="small" plain class="op-btn"
+                        @click="manageFolderEntries(scope.row)">配置条目</el-button>
+
+                      <el-button type="info" size="small" plain class="op-btn"
+                        @click="openFolderSettings(scope.row)">设置</el-button>
+
+                      <el-button type="danger" size="small" plain class="op-btn"
+                        @click="removeFolder(scope.$index)">删除</el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+
+            <!-- Mobile View -->
+            <div v-else class="mobile-feed-list folders-list">
+              <div v-for="(item, index) in config.folders" :key="item.id" class="mobile-feed-card"
+                style="position: relative;">
+
+                <el-button type="text" size="medium" class="mobile-delete-btn" @click="removeFolder(index)"
+                  style="position: absolute; right: 2px; top: 8px; z-index: 10; width: 32px; height: 32px; min-height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; color: #909399;">
+                  <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                    fill="currentColor">
+                    <path
+                      d="M764.288 214.592 512 466.88 259.712 214.592a31.936 31.936 0 0 0-45.12 45.12L466.752 512 214.528 764.224a31.936 31.936 0 1 0 45.12 45.184L512 557.184l252.288 252.288a31.936 31.936 0 0 0 45.12-45.12L557.12 512.064l252.288-252.352a31.936 31.936 0 1 0-45.12-45.184z">
+                    </path>
+                  </svg>
+                </el-button>
+
+                <div class="mobile-card-header" style="padding-right: 35px; justify-content: flex-start;">
                   <div class="drag-handle-mobile"
                     style="width: 24px; margin-right: 5px; cursor: move; color: #909399; font-size: 20px; text-align: center; flex-shrink: 0;">
                     ☰
@@ -1679,48 +1963,137 @@
                   <span class="mobile-card-title"
                     style="flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 5px;">
                     <el-input v-if="item.editMode" v-model="item.name" size="small" placeholder="名称"></el-input>
-                    <span v-else>{{ item.name || (item.urls ? '文件夹' : '未命名') }}</span>
+                    <span v-else>{{ item.name || '未命名' }}</span>
                   </span>
-                  <el-tag size="mini" v-if="item.urls" style="flex-shrink: 0;">文件夹</el-tag>
-                </div>
-
-                <div class="mobile-card-row">
-                  <label>URL:</label>
-                  <div class="mobile-card-value">
-                    <el-input v-if="item.editMode && !item.urls" v-model="item.url" size="small"
-                      placeholder="URL"></el-input>
-                    <span v-else>{{ item.url }}</span>
-                    <div v-if="item.urls">
-                      <el-tag size="mini" type="info">包含 {{ item.urls.length }} 个源</el-tag>
-                    </div>
-                  </div>
+                  <el-tag size="mini" type="info">{{ item.entries ? item.entries.length : 0 }} 个条目</el-tag>
                 </div>
 
                 <div class="mobile-card-row">
                   <label>分组:</label>
                   <div class="mobile-card-value">
-                    <el-input v-if="item.editMode" v-model="item.group" size="small" placeholder="默认: 关注"></el-input>
-                    <span v-else>{{ item.group || '关注' }}</span>
+                    <el-select v-if="item.editMode" :model-value="getGroupsForFolder(item.id)"
+                      @update:model-value="val => handleFolderGroupChange(item, val)" size="small" placeholder="未分组"
+                      multiple collapse-tags filterable allow-create default-first-option style="width: 100%;">
+                      <el-option v-for="g in getGroupOptions()" :key="g" :label="g" :value="g"></el-option>
+                    </el-select>
+                    <span v-else>{{ getGroupNamesForFolder(item.id) || '未分组' }}</span>
                   </div>
                 </div>
 
                 <div class="mobile-card-actions">
-                  <el-button-group>
-                    <el-button size="mini" @click="moveSourceUp(index)" :disabled="index === 0">↑</el-button>
-                    <el-button size="mini" @click="moveSourceDown(index)"
-                      :disabled="index === config.sources.length - 1">↓</el-button>
-                  </el-button-group>
-
                   <el-button v-if="!item.editMode" type="primary" size="mini" plain
                     @click="enableEdit(item)">编辑</el-button>
                   <el-button v-else type="success" size="mini" @click="saveEdit(item)">保存</el-button>
 
-                  <el-button type="info" size="mini" plain @click="openFeedSettings(item)">设置</el-button>
+                  <el-button type="warning" size="mini" plain @click="manageFolderEntries(item)">配置条目</el-button>
 
-                  <el-button v-if="item.urls" type="warning" size="mini" plain
-                    @click="manageFolder(item)">内容</el-button>
+                  <el-button type="info" size="mini" plain @click="openFolderSettings(item)">设置</el-button>
+                </div>
+              </div>
+            </div>
+          </el-tab-pane>
 
-                  <!-- Delete button moved to top-right -->
+          <!-- Layout Groups Tab - 分组布局配置 -->
+          <el-tab-pane label="分组布局" name="layoutGroups">
+            <div style="margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+              <el-button type="primary" @click="addLayoutGroup">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+                  style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;">
+                  <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                </svg>
+                添加分组
+              </el-button>
+            </div>
+
+            <div style="margin-bottom: 10px; color: #666; font-size: 14px; text-align: center;">
+              拖动调整分组顺序，选中单选框设置默认展示分组。每个分组可包含多个订阅源或文件夹。
+            </div>
+
+            <!-- PC View -->
+            <div v-if="isPc" style="max-width: 800px; margin: 0 auto;">
+              <el-table ref="layoutGroupsTable" class="layout-groups-table" :data="config.layoutGroups"
+                style="width: 100%" row-key="id" border>
+                <el-table-column width="50" align="center" header-align="center">
+                  <template #default>
+                    <div class="group-drag-handle" style="cursor: move; color: #909399;">
+                      ☰
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column label="分组名称" prop="name" min-width="130" align="center" header-align="center">
+                  <template #default="scope">
+                    <el-input v-if="scope.row.editMode" v-model="scope.row.name" size="small"></el-input>
+                    <span v-else>{{ scope.row.name }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="布局项数" width="100" align="center" header-align="center">
+                  <template #default="scope">
+                    <el-tag size="mini">{{ scope.row.items ? scope.row.items.length : 0 }}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="默认" width="80" align="center" header-align="center">
+                  <template #default="scope">
+                    <el-radio v-model="config.defaultGroup" :label="scope.row.id">&nbsp;</el-radio>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="280" align="center" header-align="center">
+                  <template #default="scope">
+                    <div class="operation-container">
+                      <el-button v-if="!scope.row.editMode" type="primary" size="small" plain class="op-btn"
+                        @click="enableEdit(scope.row)">编辑</el-button>
+                      <el-button v-else type="success" size="small" class="op-btn"
+                        @click="saveEdit(scope.row)">保存</el-button>
+
+                      <el-button type="warning" size="small" plain class="op-btn"
+                        @click="manageLayoutItems(scope.row)">配置布局</el-button>
+
+                      <el-button type="danger" size="small" plain class="op-btn"
+                        @click="removeLayoutGroup(scope.$index)">删除</el-button>
+                    </div>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+
+            <!-- Mobile View -->
+            <div v-else class="mobile-feed-list layout-groups-list">
+              <div v-for="(item, index) in config.layoutGroups" :key="item.id" class="mobile-feed-card"
+                style="position: relative;">
+
+                <el-button type="text" size="medium" class="mobile-delete-btn" @click="removeLayoutGroup(index)"
+                  style="position: absolute; right: 2px; top: 8px; z-index: 10; width: 32px; height: 32px; min-height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; color: #909399;">
+                  <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                    fill="currentColor">
+                    <path
+                      d="M764.288 214.592 512 466.88 259.712 214.592a31.936 31.936 0 0 0-45.12 45.12L466.752 512 214.528 764.224a31.936 31.936 0 1 0 45.12 45.184L512 557.184l252.288 252.288a31.936 31.936 0 0 0 45.12-45.12L557.12 512.064l252.288-252.352a31.936 31.936 0 1 0-45.12-45.184z">
+                    </path>
+                  </svg>
+                </el-button>
+
+                <div class="mobile-card-header" style="padding-right: 35px; justify-content: flex-start;">
+                  <div class="group-drag-handle"
+                    style="width: 24px; margin-right: 5px; cursor: move; color: #909399; font-size: 20px; text-align: center; flex-shrink: 0;">
+                    ☰
+                  </div>
+                  <span class="mobile-card-title"
+                    style="flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 5px;">
+                    <el-input v-if="item.editMode" v-model="item.name" size="small" placeholder="分组名称"></el-input>
+                    <span v-else>{{ item.name }}</span>
+                  </span>
+                  <el-tag size="mini">{{ item.items ? item.items.length : 0 }} 项</el-tag>
+                </div>
+
+                <div class="mobile-card-row">
+                  <label>默认:</label>
+                  <el-radio v-model="config.defaultGroup" :label="item.id">&nbsp;</el-radio>
+                </div>
+
+                <div class="mobile-card-actions">
+                  <el-button v-if="!item.editMode" type="primary" size="mini" plain
+                    @click="enableEdit(item)">编辑</el-button>
+                  <el-button v-else type="success" size="mini" @click="saveEdit(item)">保存</el-button>
+
+                  <el-button type="warning" size="mini" plain @click="manageLayoutItems(item)">配置布局</el-button>
                 </div>
               </div>
             </div>
@@ -1790,8 +2163,7 @@
                     </template>
                   </el-table-column>
                 </el-table>
-                <el-button type="primary" plain size="small"
-                  @click="config.schedules.push({startTime: '00:00:00', endTime: '08:00:00', baseRefresh: 10, defaultCount: 6})"
+                <el-button type="primary" plain size="small" @click="addSchedule"
                   style="width: 100%; margin-top: 10px;">
                   添加时段规则
                 </el-button>
@@ -1805,62 +2177,142 @@
             </el-form>
           </el-tab-pane>
 
-          <!-- AI Filter Tab -->
-          <el-tab-pane label="AI 过滤" name="ai">
-            <el-form :label-position="isPc ? 'right' : 'top'" :label-width="isPc ? '120px' : 'auto'">
-              <el-form-item label="启用 AI 过滤">
-                <el-switch v-model="config.aiFilter.enabled"></el-switch>
+          <!-- AI Classify Tab -->
+          <el-tab-pane label="AI 分类" name="ai">
+            <el-form v-if="config && config.aiClassify" :label-position="isPc ? 'right' : 'top'"
+              :label-width="isPc ? '120px' : 'auto'">
+              <el-form-item label="启用 AI 分类">
+                <el-switch v-model="config.aiClassify.enabled"></el-switch>
               </el-form-item>
-              <template v-if="config.aiFilter.enabled">
+              <template v-if="config.aiClassify.enabled">
                 <el-form-item label="API Key">
-                  <el-input v-model="config.aiFilter.apiKey" show-password></el-input>
+                  <el-input v-model="config.aiClassify.apiKey" show-password></el-input>
                 </el-form-item>
                 <el-form-item label="API Base">
-                  <el-input v-model="config.aiFilter.apiBase"
+                  <el-input v-model="config.aiClassify.apiBase"
                     placeholder="默认: https://ark.cn-beijing.volces.com/api/v3"></el-input>
                 </el-form-item>
                 <el-form-item label="模型">
-                  <el-input v-model="config.aiFilter.model" placeholder="默认: doubao-seed-1.8"></el-input>
-                </el-form-item>
-                <el-form-item label="阈值 (0-1)">
-                  <el-slider v-model="config.aiFilter.threshold" :min="0" :max="1" :step="0.05" show-input></el-slider>
-                  <div class="tip">置信度高于此值将被过滤</div>
+                  <el-input v-model="config.aiClassify.model" placeholder="默认: doubao-seed-1.8"></el-input>
                 </el-form-item>
                 <el-form-item label="系统提示词">
-                  <el-input type="textarea" :rows="4" v-model="config.aiFilter.systemPrompt"></el-input>
+                  <el-input type="textarea" :rows="4" v-model="config.aiClassify.systemPrompt"
+                    placeholder="默认: 根据类别列表对文章进行分类"></el-input>
                 </el-form-item>
+                <el-form-item label="最大描述长度">
+                  <el-input-number v-model="config.aiClassify.maxDescLength" :min="100" :max="10000"
+                    :step="100"></el-input-number>
+                  <div class="tip">发送给AI的文章描述截断长度（默认2000字符）</div>
+                </el-form-item>
+
+                <!-- 类别管理 -->
+                <el-divider content-position="left">分类类别管理</el-divider>
+                <div class="categories-manager" v-if="config && config.aiClassify">
+
+                  <!-- Package Management -->
+                  <div v-for="(pkg, pkgIndex) in (config.aiClassify.categoryPackages || [])" :key="pkg.id"
+                    style="margin-bottom: 20px; border: 1px solid #ebeef5; padding: 15px; border-radius: 8px;">
+                    <div
+                      style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                      <div style="display: flex; gap: 10px; align-items: center;">
+                        <el-tag size="medium" effect="dark">分类包</el-tag>
+                        <el-input v-model="pkg.name" size="small" style="width: 200px;" placeholder="包名称"></el-input>
+                        <el-input v-model="pkg.id" size="small" style="width: 150px;" placeholder="包ID"></el-input>
+                      </div>
+                      <el-button type="danger" size="mini" circle @click="removePackage(pkgIndex)">
+                        <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="12" height="12"
+                          fill="currentColor">
+                          <path
+                            d="M160 256h704a32 32 0 0 1 0 64H160a32 32 0 0 1 0-64z m96 96h512a32 32 0 0 1 32 32v512a32 32 0 0 1-32 32H256a32 32 0 0 1-32-32V384a32 32 0 0 1 32-32z m96 96v384a32 32 0 0 0 64 0V448a32 32 0 0 0-64 0z m192 0v384a32 32 0 0 0 64 0V448a32 32 0 0 0-64 0zM352 160h320a32 32 0 0 1 0 64H352a32 32 0 0 1 0-64z">
+                          </path>
+                        </svg>
+                      </el-button>
+                    </div>
+
+                    <el-table v-if="isPc" :data="pkg.categories" border size="small" style="width: 100%;">
+                      <el-table-column label="ID" prop="id" width="120">
+                        <template #default="scope">
+                          <el-input v-model="scope.row.id" size="small" placeholder="类别ID"></el-input>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="名称" prop="name" width="180">
+                        <template #default="scope">
+                          <el-input v-model="scope.row.name" size="small" placeholder="类别名称"></el-input>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="描述" prop="description">
+                        <template #default="scope">
+                          <el-input v-model="scope.row.description" size="small" placeholder="类别描述"></el-input>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="颜色" prop="color" width="100">
+                        <template #default="scope">
+                          <el-color-picker v-model="scope.row.color" size="small"></el-color-picker>
+                        </template>
+                      </el-table-column>
+                      <el-table-column width="60" align="center">
+                        <template #default="scope">
+                          <el-button type="text" style="color: #F56C6C" size="mini"
+                            @click="removeCategoryFromPackage(pkg, scope.$index)">删除</el-button>
+                        </template>
+                      </el-table-column>
+                    </el-table>
+
+                    <!-- Mobile View for Categories -->
+                    <div v-else class="mobile-category-list">
+                      <div v-for="(cat, catIndex) in pkg.categories" :key="cat.id || catIndex"
+                        class="mobile-category-card">
+                        <button type="button" class="mobile-category-delete-btn"
+                          @click="removeCategoryFromPackage(pkg, catIndex)">
+                          <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                            fill="currentColor">
+                            <path
+                              d="M764.288 214.592 512 466.88 259.712 214.592a31.936 31.936 0 0 0-45.12 45.12L466.752 512 214.528 764.224a31.936 31.936 0 1 0 45.12 45.184L512 557.184l252.288 252.288a31.936 31.936 0 0 0 45.12-45.12L557.12 512.064l252.288-252.352a31.936 31.936 0 1 0-45.12-45.184z">
+                            </path>
+                          </svg>
+                        </button>
+                        <div class="mobile-category-row" style="padding-right: 32px;">
+                          <label>ID:</label>
+                          <div class="value"><el-input v-model="cat.id" size="small" placeholder="类别ID"></el-input>
+                          </div>
+                        </div>
+                        <div class="mobile-category-row">
+                          <label>名称:</label>
+                          <div class="value"><el-input v-model="cat.name" size="small" placeholder="名称"></el-input>
+                          </div>
+                        </div>
+                        <div class="mobile-category-row">
+                          <label>描述:</label>
+                          <div class="value"><el-input v-model="cat.description" size="small"
+                              placeholder="描述"></el-input></div>
+                        </div>
+                        <div class="mobile-category-row">
+                          <label>颜色:</label>
+                          <div class="value" style="display: flex; align-items: center;">
+                            <el-color-picker v-model="cat.color" size="small"></el-color-picker>
+                            <span v-if="cat.color" style="margin-left: 8px; font-size: 12px; color: #909399;">{{
+                              cat.color }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div style="margin-top: 10px;">
+                      <el-button type="primary" plain size="mini" @click="addCategoryToPackage(pkg)">+
+                        添加类别到此包</el-button>
+                    </div>
+                  </div>
+
+                  <div style="margin-bottom: 20px;">
+                    <el-button type="success" plain size="small" @click="addPackage" style="width: 100%;">+
+                      新建分类包</el-button>
+                  </div>
+
+                  <div class="tip" style="margin-top: 10px;">
+                    所有类别必须属于某个分类包。
+                  </div>
+                </div>
               </template>
             </el-form>
-          </el-tab-pane>
-
-          <!-- Group Management Tab -->
-          <el-tab-pane label="分组管理" name="groups">
-            <div class="groups-manager" :style="{ padding: isPc ? '0' : '10px' }">
-              <div style="margin-bottom: 10px; color: #666; font-size: 14px;">
-                拖动调整分组顺序，选中单选框设置默认展示分组。
-              </div>
-              <el-table :data="editingGroups" row-key="name" class="groups-table" border
-                style="width: 100%; max-width: 600px; margin: 0 auto;">
-                <el-table-column width="50" align="center">
-                  <template #default>
-                    <div class="group-drag-handle" style="cursor: move; color: #909399;">
-                      ☰
-                    </div>
-                  </template>
-                </el-table-column>
-                <el-table-column label="分组名称" prop="name">
-                  <template #default="scope">
-                    {{ scope.row.name }}
-                    <span v-if="scope.row.name === '关注'" style="font-size: 12px; color: #999;">(系统默认)</span>
-                  </template>
-                </el-table-column>
-                <el-table-column label="默认展示" width="100" align="center">
-                  <template #default="scope">
-                    <el-radio v-model="config.defaultGroup" :label="scope.row.name">&nbsp;</el-radio>
-                  </template>
-                </el-table-column>
-              </el-table>
-            </div>
           </el-tab-pane>
         </el-tabs>
       </div>
@@ -1869,69 +2321,118 @@
         <el-button type="primary" @click="saveConfig">保存并应用</el-button>
       </span>
 
-      <!-- Folder Management Dialog -->
-      <el-dialog title="文件夹内容管理" v-model="showFolderModal" :width="isPc ? '600px' : '95%'" append-to-body>
+      <!-- Folder Entries Management Dialog -->
+      <el-dialog title="文件夹条目配置" v-model="showFolderModal" :width="isPc ? '900px' : '95%'" append-to-body>
         <div v-if="currentFolder">
-          <el-button type="primary" size="small" @click="addFeedToFolder" style="margin-bottom: 10px;">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
-              style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;">
-              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-            </svg>
-            添加源
-          </el-button>
+          <div style="margin-bottom: 15px; display: flex; gap: 12px; justify-content: center;">
+            <el-button type="primary" size="small" @click="addFolderEntry">
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+                style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+              </svg>
+              添加订阅源条目
+            </el-button>
+            <el-dropdown @command="addBatchAISourcesEntry" trigger="click" :disabled="!hasCategoryPackages">
+              <el-button type="success" size="small" :disabled="!hasCategoryPackages">
+                批量添加AI分类源
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+                  style="width: 12px; height: 12px; margin-left: 4px; vertical-align: middle;">
+                  <path d="M7 10l5 5 5-5z" />
+                </svg>
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-for="pkg in getCategoryPackagesForDropdown()" :key="pkg.id" :command="pkg.id">
+                    {{ pkg.name }} ({{ getSourceCountForPackage(pkg.id) }}个源)
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
+          <div class="tip" style="margin-bottom: 15px;">
+            文件夹可聚合多个订阅源。每个条目可绑定一个订阅源和可选的分类类别。
+            <br>"批量添加AI分类源"可根据分类包快速添加所有绑定了该分类包类别的订阅源。
+          </div>
 
           <!-- PC Table -->
-          <el-table class="folder-table" v-if="isPc" :data="currentFolder.urls" border row-key="url">
-            <el-table-column width="40">
+          <el-table ref="folderEntriesTable" class="folder-entries-table" v-if="isPc" :data="currentFolder.entries"
+            border row-key="_id" :row-style="rowStyleForFolderEntry">
+            <el-table-column width="40" align="center" header-align="center">
               <template #default>
                 <div class="drag-handle" style="cursor: move; text-align: center; color: #909399;">
                   ☰
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="name" label="名称">
+            <el-table-column label="类型" width="120" align="center" header-align="center">
               <template #default="scope">
-                <el-input v-if="scope.row.editMode" v-model="scope.row.name" size="small"></el-input>
-                <span v-else>{{ scope.row.name }}</span>
+                <el-tag v-if="scope.row.categoryPackageId" type="success">分类包</el-tag>
+                <el-tag v-else type="info">订阅源</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="url" label="URL">
+            <el-table-column label="订阅源" min-width="250" header-align="center">
               <template #default="scope">
-                <el-input v-if="scope.row.editMode" v-model="scope.row.url" size="small"></el-input>
-                <span v-else>{{ scope.row.url }}</span>
+                <template v-if="scope.row.categoryPackageId">
+                  <span style="color: #67c23a; font-weight: 500;">{{ getCategoryPackageName(scope.row.categoryPackageId)
+                    }}</span>
+                  <span style="font-size: 11px; color: #909399; margin-left: 8px;">({{
+                    getSourceCountForPackage(scope.row.categoryPackageId) }}个源)</span>
+                </template>
+                <template v-else>
+                  <el-select v-model="scope.row.sourceUrl" size="small" filterable placeholder="选择订阅源"
+                    style="width: 100%;" :disabled="isEntryInvalid(scope.row)">
+                    <el-option v-for="src in getAvailableSourcesForEntry(scope.row)" :key="src.url"
+                      :label="src.name || src.url" :value="src.url">
+                      <span :style="{color: isAIEnabledSource(src.url) ? '#67c23a' : ''}">{{ src.name || src.url
+                        }}</span>
+                      <span v-if="isAIEnabledSource(src.url)"
+                        style="font-size: 11px; color: #67c23a; margin-left: 5px;">[AI]</span>
+                    </el-option>
+                  </el-select>
+                  <div v-if="isEntryInvalid(scope.row)" style="color: #909399; font-size: 11px; margin-top: 2px;">
+                    已被分类包覆盖，此项失效
+                  </div>
+                </template>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="240">
+            <el-table-column label="类别过滤" width="180" align="center" header-align="center">
               <template #default="scope">
-                <div class="operation-container">
-                  <el-button-group>
-                    <el-button type="default" size="small" class="op-btn" @click="moveFeedInFolderUp(scope.$index)"
-                      :disabled="scope.$index === 0" title="上移">↑</el-button>
-                    <el-button type="default" size="small" class="op-btn" @click="moveFeedInFolderDown(scope.$index)"
-                      :disabled="scope.$index === currentFolder.urls.length - 1" title="下移">↓</el-button>
-                  </el-button-group>
-
-                  <el-button v-if="!scope.row.editMode" type="primary" size="small" plain class="op-btn"
-                    @click="enableEdit(scope.row)">编辑</el-button>
-                  <el-button v-else type="success" size="small" class="op-btn"
-                    @click="saveEdit(scope.row)">保存</el-button>
-
-                  <el-button type="info" size="small" plain class="op-btn"
-                    @click="openFeedSettings(scope.row)">设置</el-button>
-
-                  <el-button type="danger" size="small" plain class="op-btn"
-                    @click="removeFeedFromFolder(scope.$index)">×</el-button>
-                </div>
+                <el-select v-model="scope.row.categories" multiple collapse-tags size="small" clearable
+                  @change="val => handleCategorySelect(val, scope.row, 'categories')" placeholder="需选择分类"
+                  style="width: 100%;">
+                  <el-option-group v-for="group in getCategoryOptionsGrouped()" :key="group.label" :label="group.label">
+                    <el-option :label="'全选' + group.label" :value="'select_all_' + group.label"
+                      class="select-all-option">
+                      <span style="color: #409EFF; font-weight: 500;">● 全选此分类包</span>
+                    </el-option>
+                    <el-option v-for="cat in group.options" :key="cat.id" :label="cat.name" :value="cat.id">
+                      <span :style="{color: cat.color}">●</span> {{ cat.name }}
+                    </el-option>
+                  </el-option-group>
+                </el-select>
+              </template>
+            </el-table-column>
+            <el-table-column label="显示源名" width="90" align="center" header-align="center">
+              <template #default="scope">
+                <el-switch v-model="scope.row.hideSource" :active-value="false" :inactive-value="true"
+                  active-color="#13ce66" inactive-color="#ff4949">
+                </el-switch>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="80" align="center" header-align="center">
+              <template #default="scope">
+                <el-button type="danger" size="small" plain class="op-btn"
+                  @click="removeFolderEntry(scope.$index)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
 
           <!-- Mobile List -->
-          <div v-else class="mobile-feed-list folder-list">
-            <div v-for="(item, index) in currentFolder.urls" :key="index" class="mobile-feed-card"
-              style="position: relative;">
+          <div v-else class="mobile-feed-list folder-entries-list">
+            <div v-for="(item, index) in currentFolder.entries" :key="item._id" class="mobile-feed-card"
+              style="position: relative;" :style="isEntryInvalid(item) ? {opacity: 0.6, background: '#f5f7fa'} : {}">
 
-              <el-button type="text" size="medium" class="mobile-delete-btn" @click="removeFeedFromFolder(index)"
+              <el-button type="text" size="medium" class="mobile-delete-btn" @click="removeFolderEntry(index)"
                 style="position: absolute; right: 2px; top: 8px; z-index: 10; width: 32px; height: 32px; min-height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; color: #909399;">
                 <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
                   fill="currentColor">
@@ -1946,39 +2447,181 @@
                   style="width: 24px; margin-right: 5px; cursor: move; color: #909399; font-size: 20px; text-align: center; flex-shrink: 0;">
                   ☰
                 </div>
-                <div class="mobile-card-title"
-                  style="flex:1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 5px;">
-                  <el-input v-if="item.editMode" v-model="item.name" size="small" placeholder="名称"></el-input>
-                  <span v-else>{{ item.name }}</span>
+                <el-tag v-if="item.categoryPackageId" type="success" size="small">分类包</el-tag>
+                <el-tag v-else type="info" size="small">订阅源</el-tag>
+              </div>
+
+              <div class="mobile-card-row" v-if="item.categoryPackageId">
+                <label>包:</label>
+                <div class="mobile-card-value" style="color: #67c23a; font-weight: 500;">
+                  {{ getCategoryPackageName(item.categoryPackageId) }}
+                  <span style="font-size: 11px; color: #909399; margin-left: 5px;">({{
+                    getSourceCountForPackage(item.categoryPackageId) }}个源)</span>
+                </div>
+              </div>
+              <div class="mobile-card-row" v-else>
+                <label>源:</label>
+                <div class="mobile-card-value">
+                  <el-select v-model="item.sourceUrl" size="small" filterable placeholder="选择订阅源" style="width: 100%;"
+                    :disabled="isEntryInvalid(item)">
+                    <el-option v-for="src in getAvailableSourcesForEntry(item)" :key="src.url"
+                      :label="src.name || src.url" :value="src.url"></el-option>
+                  </el-select>
+                  <div v-if="isEntryInvalid(item)" style="color: #909399; font-size: 11px; margin-top: 2px;">
+                    已被分类包覆盖
+                  </div>
                 </div>
               </div>
 
               <div class="mobile-card-row">
-                <label>URL:</label>
+                <label>类别:</label>
                 <div class="mobile-card-value">
-                  <el-input v-if="item.editMode" v-model="item.url" size="small" placeholder="URL"></el-input>
-                  <span v-else>{{ item.url }}</span>
+                  <el-select v-model="item.categories" multiple collapse-tags size="small" clearable placeholder="需选择分类"
+                    @change="val => handleCategorySelect(val, item, 'categories')" style="width: 100%;">
+                    <el-option-group v-for="group in getCategoryOptionsGrouped()" :key="group.label"
+                      :label="group.label">
+                      <el-option :label="'全选' + group.label" :value="'select_all_' + group.label"
+                        class="select-all-option">
+                        <span style="color: #409EFF; font-weight: 500;">● 全选此分类包</span>
+                      </el-option>
+                      <el-option v-for="cat in group.options" :key="cat.id" :label="cat.name"
+                        :value="cat.id"></el-option>
+                    </el-option-group>
+                  </el-select>
                 </div>
               </div>
 
-              <div class="mobile-card-actions">
-                <el-button-group>
-                  <el-button size="mini" @click="moveFeedInFolderUp(index)" :disabled="index === 0">↑</el-button>
-                  <el-button size="mini" @click="moveFeedInFolderDown(index)"
-                    :disabled="index === currentFolder.urls.length - 1">↓</el-button>
-                </el-button-group>
-
-                <el-button v-if="!item.editMode" type="primary" size="mini" plain
-                  @click="enableEdit(item)">编辑</el-button>
-                <el-button v-else type="success" size="mini" @click="saveEdit(item)">保存</el-button>
-
-                <el-button type="info" size="mini" plain @click="openFeedSettings(item)">设置</el-button>
-
-                <!-- Delete button moved to top right -->
+              <div class="mobile-card-row">
+                <label>源名:</label>
+                <div class="mobile-card-value" style="display: flex; align-items: center; justify-content: flex-end;">
+                  <el-switch v-model="item.hideSource" :active-value="false" :inactive-value="true"
+                    active-color="#13ce66" inactive-color="#ff4949"></el-switch>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+      </el-dialog>
+
+      <!-- Layout Items Management Dialog -->
+      <el-dialog title="分组布局配置" v-model="showLayoutItemsModal" :width="isPc ? '700px' : '95%'" append-to-body>
+        <div v-if="currentLayoutGroup">
+          <div style="margin-bottom: 15px; display: flex; gap: 12px; justify-content: center;">
+            <el-button type="primary" size="small" @click="addLayoutItem('source')">添加订阅源</el-button>
+            <el-button type="success" size="small" @click="addLayoutItem('folder')">添加文件夹</el-button>
+          </div>
+          <div class="tip" style="margin-bottom: 15px;">
+            配置该分组中显示的卡片及其顺序。可以添加订阅源或文件夹。
+          </div>
+
+          <!-- PC Table -->
+          <el-table ref="layoutItemsTable" class="layout-items-table" v-if="isPc" :data="currentLayoutGroup.items"
+            border row-key="_id">
+            <el-table-column width="40">
+              <template #default>
+                <div class="drag-handle" style="cursor: move; text-align: center; color: #909399;">
+                  ☰
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="类型" width="100">
+              <template #default="scope">
+                <el-tag v-if="scope.row.type === 'source'" type="info">订阅源</el-tag>
+                <el-tag v-else type="success">文件夹</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="选择" min-width="300">
+              <template #default="scope">
+                <el-select v-if="scope.row.type === 'source'" v-model="scope.row.sourceUrl" size="small" filterable
+                  placeholder="选择订阅源" style="width: 100%;">
+                  <el-option v-for="src in config.sources" :key="src.url" :label="src.name || src.url"
+                    :value="src.url"></el-option>
+                </el-select>
+                <el-select v-else v-model="scope.row.folderId" size="small" filterable placeholder="选择文件夹"
+                  style="width: 100%;">
+                  <el-option v-for="folder in config.folders" :key="folder.id" :label="folder.name"
+                    :value="folder.id"></el-option>
+                </el-select>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="80">
+              <template #default="scope">
+                <el-button type="danger" size="small" plain class="op-btn"
+                  @click="removeLayoutItem(scope.$index)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <!-- Mobile List -->
+          <div v-else class="mobile-feed-list layout-items-list">
+            <div v-for="(item, index) in currentLayoutGroup.items" :key="item._id" class="mobile-feed-card"
+              style="position: relative;">
+
+              <el-button type="text" size="medium" class="mobile-delete-btn" @click="removeLayoutItem(index)"
+                style="position: absolute; right: 2px; top: 8px; z-index: 10; width: 32px; height: 32px; min-height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; color: #909399;">
+                <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                  fill="currentColor">
+                  <path
+                    d="M764.288 214.592 512 466.88 259.712 214.592a31.936 31.936 0 0 0-45.12 45.12L466.752 512 214.528 764.224a31.936 31.936 0 1 0 45.12 45.184L512 557.184l252.288 252.288a31.936 31.936 0 0 0 45.12-45.12L557.12 512.064l252.288-252.352a31.936 31.936 0 1 0-45.12-45.184z">
+                  </path>
+                </svg>
+              </el-button>
+
+              <div class="mobile-card-header" style="padding-right: 35px; justify-content: flex-start;">
+                <div class="drag-handle-mobile"
+                  style="width: 24px; margin-right: 5px; cursor: move; color: #909399; font-size: 20px; text-align: center; flex-shrink: 0;">
+                  ☰
+                </div>
+                <el-tag v-if="item.type === 'source'" type="info" size="small">订阅源</el-tag>
+                <el-tag v-else type="success" size="small">文件夹</el-tag>
+              </div>
+
+              <div class="mobile-card-row">
+                <label>{{ item.type === 'source' ? '源:' : '夹:' }}</label>
+                <div class="mobile-card-value">
+                  <el-select v-if="item.type === 'source'" v-model="item.sourceUrl" size="small" filterable
+                    placeholder="选择订阅源" style="width: 100%;">
+                    <el-option v-for="src in config.sources" :key="src.url" :label="src.name || src.url"
+                      :value="src.url"></el-option>
+                  </el-select>
+                  <el-select v-else v-model="item.folderId" size="small" filterable placeholder="选择文件夹"
+                    style="width: 100%;">
+                    <el-option v-for="folder in config.folders" :key="folder.id" :label="folder.name"
+                      :value="folder.id"></el-option>
+                  </el-select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </el-dialog>
+
+      <!-- Folder Settings Modal -->
+      <el-dialog title="文件夹设置" v-model="showFolderSettingsModal" :width="isPc ? '500px' : '95%'" append-to-body>
+        <div v-if="currentEditingFolder">
+          <el-form :label-position="isPc ? 'right' : 'top'" :label-width="isPc ? '120px' : 'auto'">
+            <el-form-item label="图标 URL">
+              <el-input v-model="currentEditingFolder.icon" placeholder="https://..."></el-input>
+            </el-form-item>
+            <el-form-item label="显示发布时间">
+              <el-switch v-model="currentEditingFolder.showPubDate"></el-switch>
+              <div class="tip">在条目标题后显示发布时间（如"1小时前"）</div>
+            </el-form-item>
+            <el-form-item label="显示分类标签">
+              <el-switch v-model="currentEditingFolder.showCategory"></el-switch>
+              <div class="tip">在条目后显示 AI 分类标签</div>
+            </el-form-item>
+            <el-form-item label="显示源名称标签">
+              <el-switch v-model="currentEditingFolder.showSource"></el-switch>
+              <div class="tip">在聚合卡片内显示源名称标签（支持点击标题切换显示）</div>
+            </el-form-item>
+          </el-form>
+        </div>
+        <template #footer>
+          <el-button @click="showFolderSettingsModal = false">取消</el-button>
+          <el-button type="primary" @click="saveFolderSettings">保存</el-button>
+        </template>
       </el-dialog>
     </el-dialog>
 
@@ -1993,6 +2636,11 @@
           <el-form-item label="显示发布时间">
             <el-switch v-model="currentEditingFeed.showPubDate"></el-switch>
             <div class="tip">在条目标题后显示发布时间（如"1小时前"）</div>
+          </el-form-item>
+
+          <el-form-item label="显示分类标签">
+            <el-switch v-model="currentEditingFeed.showCategory"></el-switch>
+            <div class="tip">在条目后显示 AI 分类标签（支持点击标题切换显示）</div>
           </el-form-item>
 
           <template v-if="currentEditingFeed.url">
@@ -2042,8 +2690,8 @@
               </el-form-item>
 
               <el-form-item label="保留关键词">
-                <el-select v-model="tempFilterSettings.keepKeywords" multiple filterable allow-create default-first-option
-                  placeholder="输入关键词并回车">
+                <el-select v-model="tempFilterSettings.keepKeywords" multiple filterable allow-create
+                  default-first-option placeholder="输入关键词并回车">
                 </el-select>
                 <div class="tip" v-if="tempFilterSettings.whitelistMode">白名单模式：仅包含这些词的文章会被保留</div>
                 <div class="tip" v-else>包含这些词的文章将被保留(优先级最高)</div>
@@ -2051,7 +2699,7 @@
 
               <el-form-item>
                 <el-button type="warning" size="small" :loading="clearingCache === 'keyword'"
-                  @click="clearCacheAndRefresh('filter')">
+                  @click="clearCacheAndRefresh('classify')">
                   <svg v-if="clearingCache !== 'keyword'" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
                     fill="currentColor" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;">
                     <path
@@ -2071,10 +2719,15 @@
               <el-form-item label="脚本规则">
                 <el-input type="textarea" :rows="6" v-model="tempFilterSettings.scriptFilterContent"
                   placeholder="#!/bin/bash&#10;# 从stdin读取所有条目的JSON数组，输出过滤后的JSON数组&#10;input=$(cat)&#10;# 使用jq处理，示例：保留发布时间一致的第一条&#10;echo &quot;$input&quot; | jq '[group_by(.pubDate) | .[] | .[0]]'"></el-input>
-                <div class="tip">Bash脚本，通过stdin接收JSON数组，输出过滤后的JSON数组。<el-link type="primary" @click="showScriptHelp = !showScriptHelp" style="margin-left: 5px;">{{ showScriptHelp ? '收起' : '查看' }}示例</el-link></div>
+                <div class="tip">Bash脚本，通过stdin接收JSON数组，输出过滤后的JSON数组。<el-link type="primary"
+                    @click="showScriptHelp = !showScriptHelp" style="margin-left: 5px;">{{ showScriptHelp ? '收起' : '查看'
+                    }}示例</el-link></div>
                 <el-collapse-transition>
-                  <div v-show="showScriptHelp" style="margin-top: 10px; padding: 10px; background: #f5f7fa; border-radius: 4px; font-size: 12px;">
-                    <div><strong>条目结构:</strong> <code style="font-size: 11px;">{"title":"标题","link":"链接","pubDate":"时间","source":"来源","description":"描述"}</code></div>
+                  <div v-show="showScriptHelp"
+                    style="margin-top: 10px; padding: 10px; background: #f5f7fa; border-radius: 4px; font-size: 12px;">
+                    <div><strong>条目结构:</strong> <code
+                        style="font-size: 11px;">{"title":"标题","link":"链接","pubDate":"时间","source":"来源","description":"描述"}</code>
+                    </div>
                     <div style="margin-top: 8px;"><strong>常用示例：</strong></div>
                     <div style="line-height: 1.8;">
                       • 保留发布时间相同的第一条: <code style="font-size: 11px;">jq '[group_by(.pubDate) | .[] | .[0]]'</code><br>
@@ -2089,7 +2742,7 @@
 
               <el-form-item>
                 <el-button type="warning" size="small" :loading="clearingCache === 'script'"
-                  @click="clearCacheAndRefresh('filter')">
+                  @click="clearCacheAndRefresh('classify')">
                   <svg v-if="clearingCache !== 'script'" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
                     fill="currentColor" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;">
                     <path
@@ -2100,34 +2753,72 @@
               </el-form-item>
             </template>
 
-            <el-divider content-position="left">AI 过滤</el-divider>
+            <el-divider content-position="left">AI 分类</el-divider>
 
-            <el-form-item label="启用AI过滤">
+            <el-form-item label="启用AI分类">
               <el-switch v-model="tempAIFilterEnabled"></el-switch>
-              <div class="tip">需要先在基础设置中启用全局AI过滤并配置API</div>
+              <div class="tip">需要先在设置中启用全局AI分类并配置API</div>
             </el-form-item>
 
             <template v-if="tempAIFilterEnabled">
-              <el-form-item label="自定义阈值">
-                <el-slider v-model="tempFilterSettings.threshold" :min="0" :max="1" :step="0.05" show-input></el-slider>
-                <div class="tip">置信度高于此值将被过滤 (0表示跟随全局)</div>
+              <el-form-item label="绑定类别">
+                <el-select v-model="tempFilterSettings.boundCategories" multiple placeholder="需选择分类"
+                  @change="val => handleCategorySelect(val, tempFilterSettings, 'boundCategories')">
+                  <el-option-group v-for="group in getCategoryOptionsGrouped()" :key="group.label" :label="group.label">
+                    <el-option :label="'全选' + group.label" :value="'select_all_' + group.label"
+                      class="select-all-option">
+                      <span style="color: #409EFF; font-weight: 500;">● 全选此分类包</span>
+                    </el-option>
+                    <el-option v-for="cat in group.options" :key="cat.id" :label="cat.name" :value="cat.id">
+                      <span :style="{color: cat.color}">●</span> {{ cat.name }}
+                    </el-option>
+                  </el-option-group>
+                </el-select>
+                <div class="tip">发送给AI时仅包含选定类别</div>
               </el-form-item>
 
-              <el-form-item label="自定义提示词">
-                <el-input type="textarea" :rows="3" v-model="tempFilterSettings.customPrompt"
-                  placeholder="留空则使用全局提示词"></el-input>
+              <el-form-item label="类别白名单">
+                <el-select v-model="tempFilterSettings.categoryWhitelist" multiple placeholder="不限制"
+                  @change="val => handleCategorySelect(val, tempFilterSettings, 'categoryWhitelist')">
+                  <el-option-group v-for="group in getCategoryOptionsGrouped()" :key="group.label" :label="group.label">
+                    <el-option :label="'全选' + group.label" :value="'select_all_' + group.label"
+                      class="select-all-option">
+                      <span style="color: #409EFF; font-weight: 500;">● 全选此分类包</span>
+                    </el-option>
+                    <el-option v-for="cat in group.options" :key="cat.id" :label="cat.name" :value="cat.id">
+                      <span :style="{color: cat.color}">●</span> {{ cat.name }}
+                    </el-option>
+                  </el-option-group>
+                </el-select>
+                <div class="tip">仅保留这些类别的文章（优先级高于黑名单）</div>
+              </el-form-item>
+
+              <el-form-item label="类别黑名单">
+                <el-select v-model="tempFilterSettings.categoryBlacklist" multiple placeholder="不限制"
+                  @change="val => handleCategorySelect(val, tempFilterSettings, 'categoryBlacklist')">
+                  <el-option-group v-for="group in getCategoryOptionsGrouped()" :key="group.label" :label="group.label">
+                    <el-option :label="'全选' + group.label" :value="'select_all_' + group.label"
+                      class="select-all-option">
+                      <span style="color: #409EFF; font-weight: 500;">● 全选此分类包</span>
+                    </el-option>
+                    <el-option v-for="cat in group.options" :key="cat.id" :label="cat.name" :value="cat.id">
+                      <span :style="{color: cat.color}">●</span> {{ cat.name }}
+                    </el-option>
+                  </el-option-group>
+                </el-select>
+                <div class="tip">过滤掉这些类别的文章</div>
               </el-form-item>
 
               <el-form-item>
                 <el-button type="warning" size="small" :loading="clearingCache === 'ai'"
-                  @click="clearCacheAndRefresh('filter')">
+                  @click="clearCacheAndRefresh('classify')">
                   <svg v-if="clearingCache !== 'ai'" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
                     fill="currentColor" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;">
                     <path
                       d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
                   </svg>
-                  重新过滤
-                </button>
+                  重新分类
+                </el-button>
               </el-form-item>
             </template>
 
@@ -2135,7 +2826,7 @@
 
             <el-form-item label="启用后处理">
               <el-switch v-model="tempPostProcessEnabled"></el-switch>
-              <div class="tip">在AI过滤后对条目进行二次处理</div>
+              <div class="tip">在AI分类后对条目进行二次处理</div>
             </el-form-item>
 
             <template v-if="tempPostProcessEnabled">
@@ -2172,9 +2863,45 @@
                       d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
                   </svg>
                   重新处理
-                </button>
+                  </button>
               </el-form-item>
             </template>
+          </template>
+
+          <!-- 文件夹专属设置 -->
+          <template v-if="currentEditingFeed.urls">
+            <el-divider content-position="left">文件夹筛选设置</el-divider>
+
+            <el-form-item label="绑定类别">
+              <el-select v-model="currentEditingFeed.boundCategories" multiple placeholder="需选择类别"
+                @change="val => handleCategorySelect(val, currentEditingFeed, 'boundCategories')">
+                <el-option-group v-for="group in getCategoryOptionsGrouped()" :key="group.label" :label="group.label">
+                  <el-option :label="'全选' + group.label" :value="'select_all_' + group.label" class="select-all-option">
+                    <span style="color: #409EFF; font-weight: 500;">● 全选此分类包</span>
+                  </el-option>
+                  <el-option v-for="cat in group.options" :key="cat.id" :label="cat.name" :value="cat.id">
+                    <span :style="{color: cat.color}">●</span> {{ cat.name }}
+                  </el-option>
+                </el-option-group>
+              </el-select>
+              <div class="tip">仅展示所选类别的条目</div>
+            </el-form-item>
+
+            <el-form-item label="绑定子源">
+              <el-select v-model="currentEditingFeed.boundSources" multiple placeholder="留空表示不选择任何源">
+                <el-option-group label="文件夹内的源">
+                  <el-option v-for="sub in currentEditingFeed.urls" :key="sub.url" :label="sub.name || sub.url"
+                    :value="sub.url">
+                  </el-option>
+                </el-option-group>
+                <el-option-group label="所有启用AI分类的源" v-if="allAiEnabledSources.length > 0">
+                  <el-option v-for="src in allAiEnabledSources" :key="src.url" :label="src.displayName"
+                    :value="src.url">
+                  </el-option>
+                </el-option-group>
+              </el-select>
+              <div class="tip">选择要展示的源，留空则文件夹为空</div>
+            </el-form-item>
           </template>
         </el-form>
       </div>
@@ -2205,13 +2932,13 @@
                   <div class="card-header-left">
                     <img class="card-header-icon"
                       src="<< if $feed.Icon >><< $feed.Icon >><<else>>static/favicon.svg<<end>>" alt="icon"
-                      onerror="this.src='static/favicon.svg'" />
-                    <span class="card-header-title" onclick="window.open('<< $feed.Link >>', '_blank')">
+                      onerror="this.src='static/favicon.svg'" style="cursor: pointer;" />
+                    <span class="card-header-title" style="cursor: pointer;">
                       << $feed.Title>>
                     </span>
                   </div>
                   <div class="card-header-right">
-                    <time class="time" data-time="<< $feed.Custom.lastupdate >>" onclick="location.reload()">
+                    <time class="time" data-time="<< $feed.Custom.lastupdate >>" style="cursor: pointer;">
                       << $feed.Custom.lastupdate>>
                     </time>
                   </div>
@@ -2230,18 +2957,21 @@
                               << $item.Title>>
                             </el-link>
                             <<if $feed.ShowPubDate>>
-                              <<if and $feed.IsFolder $item.Source (ne $item.Source "" )>>
+                              <<if and $feed.ShowSource $item.Source (ne $item.Source "" )>>
                                 <span class="pubdate-tag" data-pubdate="<< $item.PubDate >>"></span>
-                                <span class="source-tag"><< $item.Source>></span>
-                              <<else>>
-                                <span class="pubdate-tag" data-pubdate="<< $item.PubDate >>"></span>
-                              <<end>>
-                            <<else>>
-                              <<if and $feed.IsFolder $item.Source (ne $item.Source "" )>> <span class="source-tag">
+                                <span class="source-tag">
                                   << $item.Source>>
                                 </span>
-                              <<end>>
-                            <<end>>
+                                <<else>>
+                                  <span class="pubdate-tag" data-pubdate="<< $item.PubDate >>"></span>
+                                  <<end>>
+                                    <<else>>
+                                      <<if and $feed.ShowSource $item.Source (ne $item.Source "" )>> <span
+                                          class="source-tag">
+                                          << $item.Source>>
+                                        </span>
+                                        <<end>>
+                                          <<end>>
                           </span>
                         </div>
                       </el-list-item>
@@ -2257,11 +2987,15 @@
                   :header-style="{padding: '24px 20px 16px 20px'}">
                   <div slot="header" class="card-header">
                     <div class="card-header-left">
-                      <img class="card-header-icon" :src="feed.icon || 'static/favicon.svg'" :alt="feed.title" @click="openFeedLink(feed.link)" style="cursor: pointer;" />
-                      <span class="card-header-title" @click="togglePubDate(feed)">{{ feed.title }}</span>
+                      <img class="card-header-icon" :src="feed.icon || 'static/favicon.svg'" :alt="feed.title"
+                        @click="refreshFeed(feed)" style="cursor: pointer;" title="点击刷新" />
+                      <span class="card-header-title"
+                        @click="feed.isFolder ? toggleSourceTags(feed) : toggleCategoryTags(feed)"
+                        style="cursor: pointer;" :title="feed.isFolder ? '点击切换源名称显示' : '点击切换分类显示'">{{ feed.title
+                        }}</span>
                     </div>
                     <div class="card-header-right">
-                      <time class="time" @click.stop="refreshFeed(feed)">{{ timeAgo(feed.custom.lastupdate) }}</time>
+                      <time class="time" @click.stop="togglePubDate(feed)">{{ timeAgo(feed.custom.lastupdate) }}</time>
                     </div>
                   </div>
                   <div class="scroll-container" @scroll="handleScroll">
@@ -2273,11 +3007,24 @@
                             <span class="item-number">{{ i+1 }}</span>
                           </div>
                           <span class="item-content">
-                            <el-link :href="item.link" target="_blank" @click.stop="markAsRead(item.link, false)">{{
-                              item.title
-                              }}</el-link><template v-if="feed.showPubDate"><template v-if="feed.isFolder && item.source && item.source !== ''"><span class="pubdate-tag">{{ pubDateTimeAgo(item.pubDate) }}</span><span class="source-tag">{{ item.source }}</span></template><template v-else><span class="pubdate-tag">{{ pubDateTimeAgo(item.pubDate) }}</span></template></template><template v-else><span v-if="feed.isFolder && item.source && item.source !== ''"
-                              class="source-tag"> {{ item.source
-                              }}</span></template>
+                            <el-link :href="item.link" target="_blank" @click.stop="markAsRead(item.link, false)">
+                              {{ item.title }}
+                            </el-link>
+                            <span
+                              v-if="feed.showCategory && item.category && item.category !== '_keep' && item.category !== '_filtered'"
+                              class="category-tag" :style="{backgroundColor: getCategoryColor(item.category)}"
+                              :title="getCategoryName(item.category)">
+                              {{ getCategoryName(item.category) }}
+                            </span>
+                            <template v-if="feed.showPubDate">
+                              <span class="pubdate-tag">{{ pubDateTimeAgo(item.pubDate) }}</span>
+                              <span v-if="feed.showSource && item.source" class="source-tag">{{ item.source }}</span>
+                            </template>
+                            <template v-else>
+                              <span v-if="feed.showSource && item.source" class="source-tag">
+                                {{ item.source }}
+                              </span>
+                            </template>
                           </span>
                         </div>
                       </el-list-item>
@@ -2302,10 +3049,12 @@
   <script src="static/index.full.min.js"></script>
   <script>
     window.__initialFeeds = << .RssDataList | json >>;
+    window.__initialCategories = << .Categories | json >>;
     const app = Vue.createApp({
       data() {
         return {
           feeds: window.__initialFeeds || [],
+          initialCategories: window.__initialCategories || [], // 注入初始类别映射
           currentGroup: '<< .DefaultGroup >>' || '关注',
           groups: << if .Groups >><< .Groups | json >><< else >> ['关注'] << end >>,
           showSEOFlag: false,
@@ -2322,24 +3071,43 @@
           showConfigModal: false,
           showFolderModal: false,
           passwordInput: '',
-          config: null,
-          activeTab: 'feeds',
+          config: {
+            sources: [],
+            folders: [],
+            layoutGroups: [],
+            darkMode: false,
+            password: '',
+            sessionDuration: 24,
+            schedules: [],
+            categories: [],
+            aiClassify: {
+              enabled: false,
+              apiKey: '',
+              apiBase: '',
+              model: '',
+              systemPrompt: '',
+              maxDescLength: 2000,
+              categoryPackages: []
+            }
+          },
+          activeTab: 'sources',
           nightStartTime: '',
           nightEndTime: '',
           currentFolder: null,
           showFeedSettingsModal: false,
           currentEditingFeed: null,
           tempKeywordFilterEnabled: false, // 关键词过滤开关
-          tempAIFilterEnabled: false, // AI过滤开关
+          tempAIFilterEnabled: false, // AI分类开关
           tempScriptFilterEnabled: false, // 脚本规则过滤开关
           showScriptHelp: false, // 脚本帮助显示开关
           tempFilterSettings: {
-            threshold: 0,
-            customPrompt: '',
             filterKeywords: [],
             keepKeywords: [],
             whitelistMode: false,
-            scriptFilterContent: ''
+            scriptFilterContent: '',
+            boundCategories: [],
+            categoryWhitelist: [],
+            categoryBlacklist: []
           },
           // 后处理临时设置
           tempPostProcessEnabled: false,
@@ -2356,6 +3124,11 @@
           touchStartY: 0,
           clearingCache: null, // 用于跟踪正在清除的缓存类型
           authToken: localStorage.getItem('rss_auth_token') || '',
+          // 新增：文件夹和布局相关
+          showLayoutItemsModal: false,
+          currentLayoutGroup: null,
+          showFolderSettingsModal: false,
+          currentEditingFolder: null,
         };
       },
       computed: {
@@ -2365,6 +3138,31 @@
             const group = feed.group || '关注';
             return group === this.currentGroup;
           });
+        },
+        // 获取所有启用了AI分类的源（用于文件夹绑定子源选择）
+        allAiEnabledSources() {
+          if (!this.config || !this.config.sources) return [];
+          const sources = [];
+
+          // 遍历所有源
+          this.config.sources.forEach(source => {
+            if (source.classify && source.classify.aiEnabled) {
+              sources.push({
+                url: source.url,
+                name: source.name || source.url,
+                displayName: source.name || source.url
+              });
+            }
+          });
+
+          return sources;
+        },
+        // 检查是否有分类包
+        hasCategoryPackages() {
+          return this.config &&
+            this.config.aiClassify &&
+            this.config.aiClassify.categoryPackages &&
+            this.config.aiClassify.categoryPackages.length > 0;
         }
       },
       watch: {
@@ -2378,25 +3176,48 @@
         showFolderModal(val) {
           if (val) {
             this.$nextTick(() => {
+              if (this.$refs.folderEntriesTable) this.$refs.folderEntriesTable.doLayout();
               // Delay slightly to ensure dialog animation/rendering
               setTimeout(() => {
-                this.initFolderSortable();
+                // this.initFolderSortable();
               }, 100);
             });
           }
         },
-        activeTab(val) {
-          if (val === 'groups') {
-            this.syncEditingGroups();
+        showLayoutItemsModal(val) {
+          if (val) {
             this.$nextTick(() => {
-              this.initGroupSortable();
+              if (this.$refs.layoutItemsTable) this.$refs.layoutItemsTable.doLayout();
             });
           }
+        },
+        activeTab(val) {
+          this.$nextTick(() => {
+            // 使用 setTimeout 确保在 Tab 切换动画完成后计算，彻底解决对齐偏差
+            setTimeout(() => {
+              if (this.$refs.sourcesTable) this.$refs.sourcesTable.doLayout();
+              if (this.$refs.foldersTable) this.$refs.foldersTable.doLayout();
+              if (this.$refs.layoutGroupsTable) this.$refs.layoutGroupsTable.doLayout();
+            }, 60);
+
+            if (val === 'layoutGroups') {
+              this.syncEditingGroups();
+              this.initGroupSortable();
+            } else if (val === 'folders') {
+              // 这里可以初始化文件夹列表的排序（如果需要）
+            }
+          });
         },
       },
       methods: {
         togglePubDate(feed) {
           feed.showPubDate = !feed.showPubDate;
+        },
+        toggleCategoryTags(feed) {
+          feed.showCategory = !feed.showCategory;
+        },
+        toggleSourceTags(feed) {
+          feed.showSource = !feed.showSource;
         },
         selectGroup(group) {
           this.currentGroup = group;
@@ -2437,8 +3258,7 @@
           if (diff < 60) return '刚刚';
           if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
           if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
-          if (diff < 2592000) return Math.floor(diff / 86400) + '天前';
-          return '';
+          return Math.floor(diff / 86400) + '天前';
         },
         updateCountdown() {
           if (this.countdown < 0) return;
@@ -2685,30 +3505,105 @@
             });
             if (res.ok) {
               this.config = await res.json();
-              // Ensure sources is initialized
-              if (!this.config.sources) {
-                this.config.sources = [];
+
+              // 确保 sources 已初始化
+              if (!this.config.sources) this.config.sources = [];
+              // 给每个源添加唯一 ID
+              this.config.sources.forEach(s => {
+                s._id = Date.now() + Math.random();
+              });
+
+              // 确保 folders 已初始化
+              if (!this.config.folders) this.config.folders = [];
+              // 给每个文件夹及其条目添加唯一 ID
+              this.config.folders.forEach(f => {
+                if (!f.id) f.id = 'folder_' + Date.now() + Math.random();
+                if (!f.entries) f.entries = [];
+                f.entries.forEach(e => {
+                  e._id = Date.now() + Math.random();
+                });
+              });
+
+              // 确保 layoutGroups 已初始化
+              if (!this.config.layoutGroups) this.config.layoutGroups = [];
+              // 给每个分组及其布局项添加唯一 ID
+              this.config.layoutGroups.forEach(g => {
+                if (!g.id) g.id = 'group_' + Date.now() + Math.random();
+                if (!g.items) g.items = [];
+                g.items.forEach(item => {
+                  item._id = Date.now() + Math.random();
+                });
+              });
+
+              // 确保 aiClassify 已初始化
+              if (!this.config.aiClassify) {
+                this.config.aiClassify = {
+                  enabled: false,
+                  apiKey: '',
+                  apiBase: '',
+                  model: '',
+                  systemPrompt: '',
+                  maxDescLength: 2000,
+                  categoryPackages: []
+                };
+              } else if (!this.config.aiClassify.categoryPackages) {
+                this.config.aiClassify.categoryPackages = [];
               }
-              // Give every source a unique ID for UI handling
-              if (this.config.sources) {
-                this.config.sources.forEach(s => {
-                  s._id = Date.now() + Math.random();
-                  if (s.urls) {
-                    s.urls.forEach(u => u._id = Date.now() + Math.random());
+
+              // Sorting Logic
+              const getSortKey = (item, type) => {
+                let groupIndex = 999999;
+                if (this.config.layoutGroups) {
+                  for (let i = 0; i < this.config.layoutGroups.length; i++) {
+                    const group = this.config.layoutGroups[i];
+                    if (group.items) {
+                      for (const gItem of group.items) {
+                        if (type === 'source' && gItem.type === 'source' && gItem.sourceUrl === item.url) {
+                          groupIndex = i;
+                          break;
+                        }
+                        if (type === 'folder' && gItem.type === 'folder' && gItem.folderId === item.id) {
+                          groupIndex = i;
+                          break;
+                        }
+                      }
+                    }
+                    if (groupIndex !== 999999) break;
                   }
+                }
+                return groupIndex;
+              };
+
+              if (this.config.sources) {
+                this.config.sources.sort((a, b) => {
+                  const idxA = getSortKey(a, 'source');
+                  const idxB = getSortKey(b, 'source');
+                  if (idxA !== idxB) return idxA - idxB;
+                  return (a.name || '').localeCompare(b.name || '', 'zh-CN');
                 });
               }
 
-              // Initialize group config
-              if (!this.config.groupOrder) this.config.groupOrder = [];
-              const derivedGroups = new Set();
-              this.config.sources.forEach(s => derivedGroups.add(s.group || '关注'));
-              derivedGroups.forEach(g => {
-                if (!this.config.groupOrder.includes(g)) {
-                  this.config.groupOrder.push(g);
-                }
-              });
-              this.editingGroups = this.config.groupOrder.map(g => ({ name: g }));
+              if (this.config.folders) {
+                this.config.folders.sort((a, b) => {
+                  const idxA = getSortKey(a, 'folder');
+                  const idxB = getSortKey(b, 'folder');
+                  if (idxA !== idxB) return idxA - idxB;
+                  return (a.name || '').localeCompare(b.name || '', 'zh-CN');
+                });
+              }
+
+              // 确保 aiClassify 已初始化
+              if (!this.config.aiClassify) {
+                this.config.aiClassify = {
+                  enabled: false,
+                  apiKey: '',
+                  apiBase: '',
+                  model: '',
+                  systemPrompt: '',
+                  maxDescLength: 2000,
+                  categories: []
+                };
+              }
 
               // 初始化 schedules
               if (!this.config.schedules) this.config.schedules = [];
@@ -2729,17 +3624,15 @@
         },
         async saveConfig() {
           try {
-            // UPDATE TIME
+            // 更新时间设置
             this.config.nightStartTime = this.nightStartTime;
             this.config.nightEndTime = this.nightEndTime;
-            // Update Group Order
-            this.config.groupOrder = this.editingGroups.map(g => g.name);
 
             const res = await fetch('/api/save-config', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                password: this.passwordInput, // Use the one entered
+                password: this.passwordInput,
                 token: this.authToken,
                 config: this.config
               })
@@ -2756,19 +3649,12 @@
             this.$message.error('保存出错');
           }
         },
-        addFeed() {
+        // === 订阅源管理 ===
+        addSource() {
           this.config.sources.unshift({
             _id: Date.now() + Math.random(),
             name: '新建源',
             url: 'http://',
-            editMode: true
-          });
-        },
-        addFolder() {
-          this.config.sources.unshift({
-            _id: Date.now() + Math.random(),
-            name: '新建文件夹',
-            urls: [],
             editMode: true
           });
         },
@@ -2787,21 +3673,185 @@
         saveEdit(row) {
           row.editMode = false;
         },
-        manageFolder(row) {
-          this.currentFolder = row;
-          this.showFolderModal = true;
-        },
-        addFeedToFolder() {
-          if (!this.currentFolder.urls) this.currentFolder.urls = [];
-          this.currentFolder.urls.push({
-            _id: Date.now() + Math.random(),
-            name: '新源',
-            url: 'http://',
+        // === 文件夹管理 ===
+        addFolder() {
+          this.config.folders.unshift({
+            id: 'folder_' + Date.now(),
+            name: '新建文件夹',
+            entries: [],
             editMode: true
           });
         },
+        removeFolder(index) {
+          this.$confirm('确定删除该文件夹吗?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            this.config.folders.splice(index, 1);
+          }).catch(() => { });
+        },
+        manageFolderEntries(folder) {
+          // 确保 entries 存在
+          if (!folder.entries) folder.entries = [];
+          // 给每个条目添加 _id
+          folder.entries.forEach(e => {
+            if (!e._id) e._id = Date.now() + Math.random();
+            // 兼容性处理：初始化 categories
+            if (!e.categories) {
+              e.categories = [];
+            }
+          });
+          this.currentFolder = folder;
+          this.showFolderModal = true;
+        },
+        addFolderEntry() {
+          if (!this.currentFolder.entries) this.currentFolder.entries = [];
+          this.currentFolder.entries.push({
+            _id: Date.now() + Math.random(),
+            sourceUrl: '',
+            categories: []
+          });
+        },
+        // 获取分类包列表（用于下拉框）
+        getCategoryPackagesForDropdown() {
+          if (!this.config || !this.config.aiClassify || !this.config.aiClassify.categoryPackages) return [];
+          return this.config.aiClassify.categoryPackages;
+        },
+        // 根据ID获取分类包名称
+        getCategoryPackageName(packageId) {
+          const pkg = this.getCategoryPackageById(packageId);
+          return pkg ? pkg.name : packageId;
+        },
+        // 获取某个分类包对应的订阅源数量
+        getSourceCountForPackage(packageId) {
+          return this.getSourcesForPackage(packageId).length;
+        },
+        // 获取某个分类包对应的所有订阅源
+        getSourcesForPackage(packageId) {
+          if (!this.config || !this.config.sources || !this.config.aiClassify || !this.config.aiClassify.categoryPackages) return [];
+
+          // 找到对应的分类包
+          const pkg = this.config.aiClassify.categoryPackages.find(p => p.id === packageId);
+          if (!pkg || !pkg.categories || pkg.categories.length === 0) return [];
+
+          // 获取该分类包的所有类别ID
+          const categoryIds = pkg.categories.map(c => c.id);
+
+          // 查找所有 boundCategories 中包含该分类包类别的源
+          return this.config.sources.filter(source => {
+            if (!source.classify || !source.classify.aiEnabled) return false;
+            if (!source.classify.boundCategories || source.classify.boundCategories.length === 0) return false;
+
+            // 检查源的 boundCategories 是否与分类包的类别有交集
+            return source.classify.boundCategories.some(catId => categoryIds.includes(catId));
+          });
+        },
+        // 批量添加AI分类源条目（根据分类包）
+        addBatchAISourcesEntry(packageId) {
+          if (!this.currentFolder.entries) this.currentFolder.entries = [];
+
+          // 检查是否已添加该分类包
+          const exists = this.currentFolder.entries.some(e => e.categoryPackageId === packageId);
+          if (exists) {
+            this.$message.warning('该分类包已添加');
+            return;
+          }
+
+          // 添加分类包条目
+          this.currentFolder.entries.push({
+            _id: Date.now() + Math.random(),
+            categoryPackageId: packageId,
+            categories: []
+          });
+
+          const pkg = this.getCategoryPackageById(packageId);
+          this.$message.success(`已添加分类包"${pkg ? pkg.name : packageId}"`);
+        },
+        // 根据ID获取分类包
+        getCategoryPackageById(packageId) {
+          if (!this.config || !this.config.aiClassify || !this.config.aiClassify.categoryPackages) return null;
+          return this.config.aiClassify.categoryPackages.find(p => p.id === packageId);
+        },
+        removeFolderEntry(index) {
+          this.currentFolder.entries.splice(index, 1);
+        },
+        isAIEnabledSource(url) {
+          const source = this.config.sources.find(s => s.url === url);
+          return source && source.classify && source.classify.aiEnabled;
+        },
+        openFolderSettings(folder) {
+          this.currentEditingFolder = folder;
+          if (folder.showPubDate === undefined) folder.showPubDate = false;
+          if (folder.showCategory === undefined) folder.showCategory = false;
+          if (folder.showSource === undefined) folder.showSource = true;
+          this.showFolderSettingsModal = true;
+        },
+        saveFolderSettings() {
+          this.showFolderSettingsModal = false;
+        },
+        // === 调度计划管理 ===
+        addSchedule() {
+          this.config.schedules.push({
+            startTime: '00:00:00',
+            endTime: '08:00:00',
+            baseRefresh: 10,
+            defaultCount: 6
+          });
+        },
+        // === 分组布局管理 ===
+        addLayoutGroup() {
+          this.config.layoutGroups.push({
+            id: 'group_' + Date.now(),
+            name: '新分组',
+            items: [],
+            editMode: true
+          });
+        },
+        removeLayoutGroup(index) {
+          this.$confirm('确定删除该分组吗?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            this.config.layoutGroups.splice(index, 1);
+          }).catch(() => { });
+        },
+        manageLayoutItems(group) {
+          // 确保 items 存在
+          if (!group.items) group.items = [];
+          // 给每个条目添加 _id
+          group.items.forEach(e => {
+            if (!e._id) e._id = Date.now() + Math.random();
+          });
+          this.currentLayoutGroup = group;
+          this.showLayoutItemsModal = true;
+        },
+        addLayoutItem(type) {
+          if (!this.currentLayoutGroup.items) this.currentLayoutGroup.items = [];
+          this.currentLayoutGroup.items.push({
+            _id: Date.now() + Math.random(),
+            type: type,
+            sourceUrl: type === 'source' ? '' : undefined,
+            folderId: type === 'folder' ? '' : undefined
+          });
+        },
+        removeLayoutItem(index) {
+          this.currentLayoutGroup.items.splice(index, 1);
+        },
+        // === 旧方法兼容（保留但不再使用）===
+        addFeed() {
+          this.addSource();
+        },
+        manageFolder(row) {
+          // 兼容旧代码
+          this.manageFolderEntries(row);
+        },
+        addFeedToFolder() {
+          this.addFolderEntry();
+        },
         removeFeedFromFolder(index) {
-          this.currentFolder.urls.splice(index, 1);
+          this.removeFolderEntry(index);
         },
         openFeedSettings(row) {
           this.currentEditingFeed = row;
@@ -2811,32 +3861,35 @@
           if (row.cacheItems === undefined) row.cacheItems = 0;
           if (row.refreshCount === undefined) row.refreshCount = 0;
           if (row.showPubDate === undefined) row.showPubDate = false;
+          if (row.showCategory === undefined) row.showCategory = false;
 
           // Init temp vars from row
-          if (!row.filter) {
+          if (!row.classify) {
             this.tempKeywordFilterEnabled = false;
             this.tempAIFilterEnabled = false;
             this.tempScriptFilterEnabled = false;
             this.tempFilterSettings = {
-              threshold: 0,
-              customPrompt: '',
               filterKeywords: [],
               keepKeywords: [],
               whitelistMode: false,
-              scriptFilterContent: ''
+              scriptFilterContent: '',
+              boundCategories: [],
+              categoryWhitelist: [],
+              categoryBlacklist: []
             };
           } else {
-            this.tempKeywordFilterEnabled = row.filter.keywordEnabled || false;
-            this.tempAIFilterEnabled = row.filter.aiEnabled || false;
-            this.tempScriptFilterEnabled = row.filter.scriptFilterEnabled || false;
+            this.tempKeywordFilterEnabled = row.classify.keywordEnabled || false;
+            this.tempAIFilterEnabled = row.classify.aiEnabled || false;
+            this.tempScriptFilterEnabled = row.classify.scriptFilterEnabled || false;
 
             this.tempFilterSettings = {
-              threshold: row.filter.threshold || 0,
-              customPrompt: row.filter.customPrompt || '',
-              filterKeywords: row.filter.filterKeywords ? [...row.filter.filterKeywords] : [],
-              keepKeywords: row.filter.keepKeywords ? [...row.filter.keepKeywords] : [],
-              whitelistMode: row.filter.whitelistMode || false,
-              scriptFilterContent: row.filter.scriptFilterContent || ''
+              filterKeywords: row.classify.filterKeywords ? [...row.classify.filterKeywords] : [],
+              keepKeywords: row.classify.keepKeywords ? [...row.classify.keepKeywords] : [],
+              whitelistMode: row.classify.whitelistMode || false,
+              scriptFilterContent: row.classify.scriptFilterContent || '',
+              boundCategories: row.classify.boundCategories ? [...row.classify.boundCategories] : [],
+              categoryWhitelist: row.classify.categoryWhitelist ? [...row.classify.categoryWhitelist] : [],
+              categoryBlacklist: row.classify.categoryBlacklist ? [...row.classify.categoryBlacklist] : []
             };
           }
 
@@ -2882,75 +3935,98 @@
           if (!this.currentEditingFeed.showPubDate) {
             this.currentEditingFeed.showPubDate = undefined;
           }
+          // Handle showCategory
+          if (!this.currentEditingFeed.showCategory) {
+            this.currentEditingFeed.showCategory = undefined;
+          }
 
-          // Construct filter object
-          let filter = this.currentEditingFeed.filter || {};
+          // Construct classify object
+          let classify = this.currentEditingFeed.classify || {};
 
           // 关键词过滤开关
           if (this.tempKeywordFilterEnabled) {
-            filter.keywordEnabled = true;
+            classify.keywordEnabled = true;
           } else {
-            filter.keywordEnabled = undefined;
+            classify.keywordEnabled = undefined;
           }
 
-          // AI过滤开关
-          if (this.tempAIFilterEnabled) {
-            filter.aiEnabled = true;
+          // AI分类开关：仅当绑定类别不为空时才可能启用
+          if (this.tempAIFilterEnabled && this.tempFilterSettings.boundCategories && this.tempFilterSettings.boundCategories.length > 0) {
+            classify.aiEnabled = true;
           } else {
-            filter.aiEnabled = undefined;
+            classify.aiEnabled = undefined;
+            if (this.tempAIFilterEnabled && (!this.tempFilterSettings.boundCategories || this.tempFilterSettings.boundCategories.length === 0)) {
+              this.$message.warning('未选择绑定类别，已自动关闭 AI 分类');
+            }
           }
 
           // 脚本规则过滤开关
           if (this.tempScriptFilterEnabled) {
-            filter.scriptFilterEnabled = true;
+            classify.scriptFilterEnabled = true;
           } else {
-            filter.scriptFilterEnabled = undefined;
+            classify.scriptFilterEnabled = undefined;
           }
 
           // 关键词过滤相关设置
           if (this.tempKeywordFilterEnabled) {
-            if (this.tempFilterSettings.filterKeywords.length > 0) filter.filterKeywords = this.tempFilterSettings.filterKeywords;
-            else filter.filterKeywords = undefined;
+            if (this.tempFilterSettings.filterKeywords.length > 0) classify.filterKeywords = this.tempFilterSettings.filterKeywords;
+            else classify.filterKeywords = undefined;
 
-            if (this.tempFilterSettings.keepKeywords.length > 0) filter.keepKeywords = this.tempFilterSettings.keepKeywords;
-            else filter.keepKeywords = undefined;
+            if (this.tempFilterSettings.keepKeywords.length > 0) classify.keepKeywords = this.tempFilterSettings.keepKeywords;
+            else classify.keepKeywords = undefined;
 
             // 白名单模式
-            if (this.tempFilterSettings.whitelistMode) filter.whitelistMode = true;
-            else filter.whitelistMode = undefined;
+            if (this.tempFilterSettings.whitelistMode) classify.whitelistMode = true;
+            else classify.whitelistMode = undefined;
           } else {
-            filter.filterKeywords = undefined;
-            filter.keepKeywords = undefined;
-            filter.whitelistMode = undefined;
+            classify.filterKeywords = undefined;
+            classify.keepKeywords = undefined;
+            classify.whitelistMode = undefined;
           }
 
-          // AI过滤相关设置
+          // AI分类相关设置
           if (this.tempAIFilterEnabled) {
-            if (this.tempFilterSettings.threshold > 0) filter.threshold = this.tempFilterSettings.threshold;
-            else filter.threshold = undefined;
+            // 绑定类别
+            if (this.tempFilterSettings.boundCategories && this.tempFilterSettings.boundCategories.length > 0) {
+              classify.boundCategories = this.tempFilterSettings.boundCategories;
+            } else {
+              classify.boundCategories = undefined;
+            }
 
-            if (this.tempFilterSettings.customPrompt) filter.customPrompt = this.tempFilterSettings.customPrompt;
-            else filter.customPrompt = undefined;
+            // 类别白名单
+            if (this.tempFilterSettings.categoryWhitelist && this.tempFilterSettings.categoryWhitelist.length > 0) {
+              classify.categoryWhitelist = this.tempFilterSettings.categoryWhitelist;
+            } else {
+              classify.categoryWhitelist = undefined;
+            }
+
+            // 类别黑名单
+            if (this.tempFilterSettings.categoryBlacklist && this.tempFilterSettings.categoryBlacklist.length > 0) {
+              classify.categoryBlacklist = this.tempFilterSettings.categoryBlacklist;
+            } else {
+              classify.categoryBlacklist = undefined;
+            }
           } else {
-            filter.threshold = undefined;
-            filter.customPrompt = undefined;
+            classify.boundCategories = undefined;
+            classify.categoryWhitelist = undefined;
+            classify.categoryBlacklist = undefined;
           }
 
           // 脚本规则过滤相关设置
           if (this.tempScriptFilterEnabled) {
-            if (this.tempFilterSettings.scriptFilterContent) filter.scriptFilterContent = this.tempFilterSettings.scriptFilterContent;
-            else filter.scriptFilterContent = undefined;
+            if (this.tempFilterSettings.scriptFilterContent) classify.scriptFilterContent = this.tempFilterSettings.scriptFilterContent;
+            else classify.scriptFilterContent = undefined;
           } else {
-            filter.scriptFilterContent = undefined;
+            classify.scriptFilterContent = undefined;
           }
 
-          // Check if filter object is empty (all undefined)
-          const filterEmpty = Object.keys(filter).every(k => filter[k] === undefined);
+          // Check if classify object is empty (all undefined)
+          const classifyEmpty = Object.keys(classify).every(k => classify[k] === undefined);
 
-          if (filterEmpty) {
-            this.currentEditingFeed.filter = undefined;
+          if (classifyEmpty) {
+            this.currentEditingFeed.classify = undefined;
           } else {
-            this.currentEditingFeed.filter = filter;
+            this.currentEditingFeed.classify = classify;
           }
 
           // Construct post-process object
@@ -3056,51 +4132,15 @@
           }
         },
         initSortable() {
-          const el = this.isPc
-            ? document.querySelector('.sources-table .el-table__body-wrapper tbody')
-            : document.querySelector('.sources-list');
-
-          if (el && !el._sortable) {
-            el._sortable = Sortable.create(el, {
-              animation: 150,
-              handle: this.isPc ? '.drag-handle' : '.drag-handle-mobile',
-              delay: 50,
-              delayOnTouchOnly: true,
-              touchStartThreshold: 5,
-              fallbackTolerance: 5,
-              forceFallback: !this.isPc,
-              onEnd: ({ newIndex, oldIndex }) => {
-                if (newIndex === oldIndex) return;
-                const item = this.config.sources.splice(oldIndex, 1)[0];
-                this.config.sources.splice(newIndex, 0, item);
-              }
-            });
-          }
+          // Sources sortable removed as per request
         },
         initFolderSortable() {
-          const el = this.isPc
-            ? document.querySelector('.folder-table .el-table__body-wrapper tbody')
-            : document.querySelector('.folder-list');
-
-          if (el && !el._sortable) {
-            el._sortable = Sortable.create(el, {
-              animation: 150,
-              handle: this.isPc ? '.drag-handle' : '.drag-handle-mobile',
-              delay: 50,
-              delayOnTouchOnly: true,
-              touchStartThreshold: 5,
-              fallbackTolerance: 5,
-              forceFallback: !this.isPc,
-              onEnd: ({ newIndex, oldIndex }) => {
-                if (newIndex === oldIndex) return;
-                const item = this.currentFolder.urls.splice(oldIndex, 1)[0];
-                this.currentFolder.urls.splice(newIndex, 0, item);
-              }
-            });
-          }
+          // Folder sorting removed as per request (auto-sorted now)
         },
         initGroupSortable() {
-          const el = document.querySelector('.groups-table .el-table__body-wrapper tbody');
+          const el = this.isPc
+            ? document.querySelector('.layout-groups-table .el-table__body-wrapper tbody')
+            : document.querySelector('.layout-groups-list');
           if (el && !el._sortable) {
             el._sortable = Sortable.create(el, {
               animation: 150,
@@ -3134,6 +4174,117 @@
           });
           // Note: we do not remove groups that are in editingGroups but not in sources,
           // to preserve order if temporary empty, or let user delete manually (if we added delete button, but we didn't)
+        },
+        resetCategories() {
+          if (!this.config || !this.config.aiClassify) return;
+          this.config.aiClassify.categoryPackages = [];
+        },
+        // --- Package Management ---
+        addPackage() {
+          if (!this.config || !this.config.aiClassify) return;
+          if (!this.config.aiClassify.categoryPackages) {
+            this.config.aiClassify.categoryPackages = [];
+          }
+          this.config.aiClassify.categoryPackages.push({
+            id: 'pkg_' + Date.now(),
+            name: '新分类包',
+            categories: []
+          });
+        },
+        removePackage(index) {
+          if (!this.config || !this.config.aiClassify || !this.config.aiClassify.categoryPackages) return;
+          this.config.aiClassify.categoryPackages.splice(index, 1);
+        },
+        addCategoryToPackage(pkg) {
+          if (!pkg.categories) {
+            pkg.categories = [];
+          }
+          pkg.categories.push({
+            id: 'cat_' + Date.now(),
+            name: '新类别',
+            description: '',
+            color: '#409EFF'
+          });
+        },
+        removeCategoryFromPackage(pkg, index) {
+          pkg.categories.splice(index, 1);
+        },
+        handleCategorySelect(newVal, target, key) {
+          if (!newVal || newVal.length === 0) return;
+          const lastVal = newVal[newVal.length - 1];
+          if (typeof lastVal === 'string' && lastVal.startsWith('select_all_')) {
+            const pkgName = lastVal.replace('select_all_', '');
+            const pkg = this.config.aiClassify.categoryPackages.find(p => p.name === pkgName);
+            if (pkg && pkg.categories) {
+              const allIds = pkg.categories.map(c => c.id);
+              // 当前已选中的值（除去全选标识）
+              const currentSet = new Set(newVal.filter(v => !String(v).startsWith('select_all_')));
+              // 如果全部都已经选上了，则为取消全选
+              const isAllSelected = allIds.every(id => currentSet.has(id));
+
+              if (isAllSelected) {
+                // 取消选中该包下的所有类别
+                allIds.forEach(id => currentSet.delete(id));
+              } else {
+                // 选中该包下的所有类别
+                allIds.forEach(id => currentSet.add(id));
+              }
+
+              if (target && key) {
+                target[key] = Array.from(currentSet);
+              }
+            }
+          }
+        },
+        // --------------------------
+        // 获取类别选项列表（用于多选框）
+        getCategoryOptions() {
+          let options = [];
+          if (this.config && this.config.aiClassify) {
+            if (this.config.aiClassify.categoryPackages && this.config.aiClassify.categoryPackages.length > 0) {
+              this.config.aiClassify.categoryPackages.forEach(pkg => {
+                if (pkg.categories) {
+                  options = options.concat(pkg.categories);
+                }
+              });
+            }
+          }
+          // 如果 config 中没有获取到分类（如未打开配置界面），则使用服务端注入的初始映射
+          if (options.length === 0) {
+            return this.initialCategories || [];
+          }
+          return options;
+        },
+        getCategoryOptionsGrouped() {
+          let groups = [];
+          if (this.config && this.config.aiClassify) {
+            // 1. Packages
+            if (this.config.aiClassify.categoryPackages && this.config.aiClassify.categoryPackages.length > 0) {
+              this.config.aiClassify.categoryPackages.forEach(pkg => {
+                if (pkg.categories && pkg.categories.length > 0) {
+                  groups.push({
+                    label: pkg.name,
+                    options: pkg.categories
+                  });
+                }
+              });
+            }
+          }
+          return groups;
+        },
+        // 获取类别名称
+        getCategoryName(categoryId) {
+          if (!categoryId) return '';
+          const categories = this.getCategoryOptions();
+          const cat = categories.find(c => c.id === categoryId);
+          return cat ? cat.name : categoryId;
+        },
+        // 获取类别颜色
+        getCategoryColor(categoryId) {
+          if (!categoryId) return '#909399';
+          const categories = this.getCategoryOptions();
+          const cat = categories.find(c => c.id === categoryId);
+          return cat ? cat.color : '#909399';
         },
         checkIsPc() {
           this.isPc = !window.matchMedia('(max-width: 767px)').matches;
@@ -3171,14 +4322,227 @@
         detectMultiline() {
           const items = document.querySelectorAll('.item-content');
           items.forEach(item => {
-            // Check if height exceeds single line height (approx 25px - 30px)
-            // Using 40px as a safe threshold
             if (item.offsetHeight > 40) {
               item.classList.add('is-multiline');
             } else {
               item.classList.remove('is-multiline');
             }
           });
+        },
+        getFoldersForSource(url) {
+          if (!this.config.folders) return [];
+          const folderIds = [];
+          for (const folder of this.config.folders) {
+            if (folder.entries && folder.entries.some(e => e.sourceUrl === url)) {
+              folderIds.push(folder.id);
+            }
+          }
+          return folderIds;
+        },
+        getFolderNamesForSource(url) {
+          const folderIds = this.getFoldersForSource(url);
+          if (folderIds.length === 0) return '';
+          return folderIds.map(id => {
+            const folder = this.config.folders.find(f => f.id === id);
+            return folder ? folder.name : '';
+          }).join(', ');
+        },
+        handleFolderChange(source, newFolderIds) {
+          if (!this.config.folders) return;
+
+          this.config.folders.forEach(folder => {
+            const isSelected = newFolderIds.includes(folder.id);
+            let entryIndex = -1;
+            if (folder.entries) {
+              entryIndex = folder.entries.findIndex(e => e.sourceUrl === source.url);
+            }
+
+            if (isSelected) {
+              // Should be in folder
+              if (entryIndex === -1) {
+                // Add to folder
+                if (!folder.entries) folder.entries = [];
+                folder.entries.push({
+                  _id: Date.now() + Math.random(),
+                  sourceUrl: source.url,
+                  category: ''
+                });
+              }
+            } else {
+              // Should NOT be in folder
+              if (entryIndex !== -1) {
+                // Remove from folder
+                folder.entries.splice(entryIndex, 1);
+              }
+            }
+          });
+        },
+        getGroupsForSource(url) {
+          if (!this.config.layoutGroups) return [];
+          const groupNames = [];
+          for (const group of this.config.layoutGroups) {
+            if (group.items && group.items.some(item => item.type === 'source' && item.sourceUrl === url)) {
+              groupNames.push(group.name);
+            }
+          }
+          return groupNames;
+        },
+        getGroupNamesForSource(url) {
+          const names = this.getGroupsForSource(url);
+          return names.join(', ');
+        },
+        handleGroupChange(source, newGroupNames) {
+          if (!this.config.layoutGroups) return;
+
+          // Handle "create new group" scenario if user typed a new name
+          newGroupNames.forEach(name => {
+            if (!this.config.layoutGroups.some(g => g.name === name) && name !== '关注') {
+              // Create new layout group
+              this.config.layoutGroups.push({
+                id: 'group_' + Date.now() + Math.random(),
+                name: name,
+                items: []
+              });
+            }
+          });
+
+          this.config.layoutGroups.forEach(group => {
+            const isSelected = newGroupNames.includes(group.name);
+            let itemIndex = -1;
+            if (group.items) {
+              itemIndex = group.items.findIndex(item => item.type === 'source' && item.sourceUrl === source.url);
+            }
+
+            if (isSelected) {
+              if (itemIndex === -1) {
+                if (!group.items) group.items = [];
+                group.items.push({
+                  _id: Date.now() + Math.random(),
+                  type: 'source',
+                  sourceUrl: source.url
+                });
+              }
+            } else {
+              if (itemIndex !== -1) {
+                group.items.splice(itemIndex, 1);
+              }
+            }
+          });
+
+          // Update the source's own group property just for local display/fallback if needed, though layoutGroups is the source of truth now
+          // For simplicity, we can set it to the first selected group or empty
+          source.group = newGroupNames.length > 0 ? newGroupNames[0] : '';
+        },
+        getGroupOptions() {
+          const groups = new Set();
+          if (this.config.layoutGroups) {
+            this.config.layoutGroups.forEach(g => groups.add(g.name));
+          }
+          // '关注' is often a virtual default, checking if we need to let user select it explicitly or if it maps to a layout group
+          // If '关注' is not in layoutGroups, it's the fallback. For explicit config, we usually only show user-defined groups + maybe a default.
+          // Let's stick to layoutGroups names.
+          return Array.from(groups);
+        },
+        getGroupsForFolder(folderId) {
+          if (!this.config.layoutGroups) return [];
+          const groupNames = [];
+          for (const group of this.config.layoutGroups) {
+            if (group.items && group.items.some(item => item.type === 'folder' && item.folderId === folderId)) {
+              groupNames.push(group.name);
+            }
+          }
+          return groupNames;
+        },
+        getGroupNamesForFolder(folderId) {
+          return this.getGroupsForFolder(folderId).join(', ');
+        },
+        handleFolderGroupChange(folder, newGroupNames) {
+          if (!this.config.layoutGroups) return;
+
+          // Handle "create new group"
+          newGroupNames.forEach(name => {
+            if (!this.config.layoutGroups.some(g => g.name === name) && name !== '关注') {
+              this.config.layoutGroups.push({
+                id: 'group_' + Date.now() + Math.random(),
+                name: name,
+                items: []
+              });
+            }
+          });
+
+          this.config.layoutGroups.forEach(group => {
+            const isSelected = newGroupNames.includes(group.name);
+            let itemIndex = -1;
+            if (group.items) {
+              itemIndex = group.items.findIndex(item => item.type === 'folder' && item.folderId === folder.id);
+            }
+
+            if (isSelected) {
+              if (itemIndex === -1) {
+                if (!group.items) group.items = [];
+                group.items.push({
+                  _id: Date.now() + Math.random(),
+                  type: 'folder',
+                  folderId: folder.id
+                });
+              }
+            } else {
+              if (itemIndex !== -1) {
+                group.items.splice(itemIndex, 1);
+              }
+            }
+          });
+        },
+        getAvailableSourcesForEntry(currentEntry) {
+          const currentUrl = currentEntry.sourceUrl;
+
+          // 收集所有分类包条目覆盖的源URL
+          const packageCoveredUrls = new Set();
+          this.currentFolder.entries.forEach(entry => {
+            if (entry.categoryPackageId) {
+              const sources = this.getSourcesForPackage(entry.categoryPackageId);
+              sources.forEach(src => packageCoveredUrls.add(src.url));
+            }
+          });
+
+          return this.config.sources.filter(src => {
+            // Check uniqueness - 避免重复添加同一个源
+            const isUsed = this.currentFolder.entries.some(e =>
+              e !== currentEntry && e.sourceUrl === src.url
+            );
+            if (isUsed) return false;
+
+            // 如果被分类包覆盖，则排除（除非是当前条目的值）
+            if (packageCoveredUrls.has(src.url)) {
+              if (src.url === currentUrl) return true; // 保留当前值以便显示
+              return false; // 在新选择中不显示
+            }
+
+            return true;
+          });
+        },
+        // 检查条目是否失效（被分类包覆盖）
+        isEntryInvalid(entry) {
+          if (entry.categoryPackageId) return false; // 分类包条目本身不会失效
+          if (!entry.sourceUrl) return false;
+
+          // 检查是否被任何分类包条目覆盖
+          for (const e of this.currentFolder.entries) {
+            if (e.categoryPackageId) {
+              const sources = this.getSourcesForPackage(e.categoryPackageId);
+              if (sources.some(src => src.url === entry.sourceUrl)) {
+                return true;
+              }
+            }
+          }
+          return false;
+        },
+        // 为失效条目设置行样式
+        rowStyleForFolderEntry({ row }) {
+          if (this.isEntryInvalid(row)) {
+            return { color: '#909399', background: '#f5f7fa' };
+          }
+          return {};
         },
       },
       updated() {
@@ -3227,6 +4591,31 @@
             loader.style.display = 'none';
           }, 300);
         }
+
+        // 始终动态加载 feeds，不依赖服务端渲染
+        try {
+          const response = await fetch('/feeds');
+          if (response.ok) {
+            this.feeds = await response.json();
+            this.showSEOFlag = false;
+          }
+        } catch (e) {
+          console.error('Failed to load feeds:', e);
+        }
+
+        // 为 SSR 卡片添加事件监听器
+        document.addEventListener('click', (e) => {
+          // 标题点击 - 刷新源（但 SSR 卡片没有刷新功能，仅作占位）
+          if (e.target.classList.contains('card-header-title')) {
+            // SSR 卡片暂不支持刷新，可选择刷新页面
+            // location.reload();
+          }
+          // 更新时间点击 - 切换 pubDate 显示（但 SSR 卡片是静态的，无法切换）
+          if (e.target.classList.contains('time') && e.target.hasAttribute('data-time')) {
+            // SSR 卡片暂不支持动态切换，可选择刷新页面
+            // location.reload();
+          }
+        });
 
         const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
         const connect = () => {
@@ -3309,8 +4698,7 @@
       if (diff < 60) return '刚刚';
       if (diff < 3600) return Math.floor(diff / 60) + ' 分钟前';
       if (diff < 86400) return Math.floor(diff / 3600) + ' 小时前';
-      if (diff < 2592000) return Math.floor(diff / 86400) + ' 天前';
-      return dateStr;
+      return Math.floor(diff / 86400) + ' 天前';
     }
 
     // 发布时间转换为相对时间（用于条目发布时间显示）
@@ -3324,8 +4712,7 @@
       if (diff < 60) return '刚刚';
       if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
       if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
-      if (diff < 2592000) return Math.floor(diff / 86400) + '天前';
-      return '';
+      return Math.floor(diff / 86400) + '天前';
     }
 
     // 更新页面上的时间显示

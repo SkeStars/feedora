@@ -36,9 +36,9 @@ var (
 		return fp
 	}()
 
-	// 过滤结果缓存: map[文章Link] -> 过滤决策
-	FilterCache     map[string]models.FilterCacheEntry
-	FilterCacheLock sync.RWMutex
+	// 分类结果缓存: map[文章Link] -> 分类结果
+	ClassifyCache     map[string]models.ClassifyCacheEntry
+	ClassifyCacheLock sync.RWMutex
 
 	// 已读状态: map[文章Link] -> 已读时间戳
 	ReadState     map[string]int64
@@ -88,7 +88,7 @@ func Init() {
 	}
 
 	DbMap = make(map[string]models.Feed)
-	FilterCache = make(map[string]models.FilterCacheEntry)
+	ClassifyCache = make(map[string]models.ClassifyCacheEntry)
 	ReadState = make(map[string]int64)
 	ItemsCache = make(map[string][]models.Item)
 	AuthTokens = make(map[string]time.Time)
@@ -148,20 +148,12 @@ func cleanupCaches(oldConfig, newConfig models.Config) {
 		newUrls[url] = true
 	}
 	
-	// 获取需要启用AI过滤的URL（用于判断是否清理FilterCache）
-	filterEnabledUrls := make(map[string]bool)
-	if newConfig.AIFilter.Enabled && newConfig.AIFilter.APIKey != "" {
+	// 获取需要启用AI分类的URL（用于判断是否清理ClassifyCache）
+	classifyEnabledUrls := make(map[string]bool)
+	if newConfig.AIClassify.Enabled && newConfig.AIClassify.APIKey != "" {
 		for _, source := range newConfig.Sources {
-			if source.IsFolder() {
-				for _, feedUrl := range source.Urls {
-					if shouldFilterURL(feedUrl.Filter, source.Filter) {
-						filterEnabledUrls[feedUrl.URL] = true
-					}
-				}
-			} else if source.URL != "" {
-				if shouldFilterURL(source.Filter, nil) {
-					filterEnabledUrls[source.URL] = true
-				}
+			if source.URL != "" && shouldClassifyURL(source.Classify) {
+				classifyEnabledUrls[source.URL] = true
 			}
 		}
 	}
@@ -175,21 +167,21 @@ func cleanupCaches(oldConfig, newConfig models.Config) {
 	}
 	Lock.Unlock()
 	
-	// 如果AI过滤全局关闭，清空所有FilterCache
-	if !newConfig.AIFilter.Enabled || newConfig.AIFilter.APIKey == "" {
-		FilterCacheLock.Lock()
-		FilterCache = make(map[string]models.FilterCacheEntry)
-		FilterCacheLock.Unlock()
+	// 如果AI分类全局关闭，清空所有ClassifyCache
+	if !newConfig.AIClassify.Enabled || newConfig.AIClassify.APIKey == "" {
+		ClassifyCacheLock.Lock()
+		ClassifyCache = make(map[string]models.ClassifyCacheEntry)
+		ClassifyCacheLock.Unlock()
 		return
 	}
 	
-	// 清理FilterCache中属于已删除源或AI过滤已关闭源的文章
-	// 需要先收集当前启用AI过滤的源的所有文章链接（包括过滤前的）
+	// 清理ClassifyCache中属于已删除源或AI分类已关闭源的文章
+	// 需要先收集当前启用AI分类的源的所有文章链接（包括分类前的）
 	Lock.RLock()
 	validArticleLinks := make(map[string]bool)
 	for url, feed := range DbMap {
-		if filterEnabledUrls[url] {
-			// 收集过滤前的所有文章
+		if classifyEnabledUrls[url] {
+			// 收集分类前的所有文章
 			for _, link := range feed.AllItemLinks {
 				validArticleLinks[link] = true
 			}
@@ -208,24 +200,19 @@ func cleanupCaches(oldConfig, newConfig models.Config) {
 	}
 	
 	// 只保留仍然需要的缓存条目
-	FilterCacheLock.Lock()
-	for link := range FilterCache {
+	ClassifyCacheLock.Lock()
+	for link := range ClassifyCache {
 		if !validArticleLinks[link] {
-			delete(FilterCache, link)
+			delete(ClassifyCache, link)
 		}
 	}
-	FilterCacheLock.Unlock()
+	ClassifyCacheLock.Unlock()
 }
 
-// shouldFilterURL 判断URL是否应该启用过滤（关键词或AI）
-func shouldFilterURL(urlFilter, folderFilter *models.FilterStrategy) bool {
-	// 优先使用URL自己的过滤策略
-	if urlFilter != nil {
-		return urlFilter.IsKeywordEnabled() || urlFilter.IsAIEnabled()
-	}
-	// 其次使用文件夹的过滤策略
-	if folderFilter != nil {
-		return folderFilter.IsKeywordEnabled() || folderFilter.IsAIEnabled()
+// shouldClassifyURL 判断URL是否应该启用AI分类
+func shouldClassifyURL(classify *models.ClassifyStrategy) bool {
+	if classify != nil {
+		return classify.IsKeywordEnabled() || classify.IsAIEnabled()
 	}
 	return false
 }

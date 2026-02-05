@@ -3609,6 +3609,12 @@
               }
 
               // Sorting Logic
+              const getFolderName = (sourceUrl) => {
+                if (!this.config.folders) return '';
+                const folder = this.config.folders.find(f => f.entries && f.entries.some(e => e.sourceUrl === sourceUrl));
+                return folder ? (folder.name || '') : '';
+              };
+
               const getSortKey = (item, type) => {
                 let groupIndex = 999999;
                 if (this.config.layoutGroups) {
@@ -3616,9 +3622,19 @@
                     const group = this.config.layoutGroups[i];
                     if (group.items) {
                       for (const gItem of group.items) {
-                        if (type === 'source' && gItem.type === 'source' && gItem.sourceUrl === item.url) {
-                          groupIndex = i;
-                          break;
+                        if (type === 'source') {
+                          if (gItem.type === 'source' && gItem.sourceUrl === item.url) {
+                            groupIndex = i;
+                            break;
+                          }
+                          // 检查源是否在属于该分组的文件夹中
+                          if (gItem.type === 'folder' && gItem.folderId) {
+                            const folder = this.config.folders.find(f => f.id === gItem.folderId);
+                            if (folder && folder.entries && folder.entries.some(e => e.sourceUrl === item.url)) {
+                              groupIndex = i;
+                              break;
+                            }
+                          }
                         }
                         if (type === 'folder' && gItem.type === 'folder' && gItem.folderId === item.id) {
                           groupIndex = i;
@@ -3637,6 +3653,13 @@
                   const idxA = getSortKey(a, 'source');
                   const idxB = getSortKey(b, 'source');
                   if (idxA !== idxB) return idxA - idxB;
+                  
+                  // 再按文件夹名称排序
+                  const folderA = getFolderName(a.url);
+                  const folderB = getFolderName(b.url);
+                  const folderCmp = folderA.localeCompare(folderB, 'zh-CN');
+                  if (folderCmp !== 0) return folderCmp;
+
                   return (a.name || '').localeCompare(b.name || '', 'zh-CN');
                 });
               }

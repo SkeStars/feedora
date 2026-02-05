@@ -329,12 +329,16 @@ func UpdateFeedWithOptions(url, formattedTime string, isManual bool, forceReproc
 
 	// 构建缓存条目的时间戳映射（用于恢复没有发布时间的条目）
 	cachedPubDates := make(map[string]string)
+	cachedFetchTimes := make(map[string]string)
 	// 优先从内存缓存获取
 	globals.Lock.RLock()
 	if cache, ok := globals.DbMap[url]; ok {
 		for _, item := range cache.Items {
 			if item.PubDate != "" {
 				cachedPubDates[item.Link] = item.PubDate
+			}
+			if item.FetchTime != "" {
+				cachedFetchTimes[item.Link] = item.FetchTime
 			}
 		}
 	}
@@ -347,6 +351,11 @@ func UpdateFeedWithOptions(url, formattedTime string, isManual bool, forceReproc
 					cachedPubDates[item.Link] = item.PubDate
 				}
 			}
+			if item.FetchTime != "" {
+				if _, exists := cachedFetchTimes[item.Link]; !exists {
+					cachedFetchTimes[item.Link] = item.FetchTime
+				}
+			}
 		}
 	}
 
@@ -354,6 +363,7 @@ func UpdateFeedWithOptions(url, formattedTime string, isManual bool, forceReproc
 	allItems := make([]models.Item, 0, len(result.Items))
 	for idx, v := range result.Items {
 		pubDate := ""
+		fetchTime := ""
 
 		if ignoreOriginalPubDate {
 			// 忽略原始发布时间模式：总是从缓存恢复或使用当前时间
@@ -378,12 +388,20 @@ func UpdateFeedWithOptions(url, formattedTime string, isManual bool, forceReproc
 			}
 		}
 
+		// 抓取时间逻辑：优先从缓存恢复，否则使用当前时间
+		if cached, ok := cachedFetchTimes[v.Link]; ok {
+			fetchTime = cached
+		} else {
+			fetchTime = formattedTime
+		}
+
 		allItems = append(allItems, models.Item{
 			Link:          v.Link,
 			Title:         v.Title,
 			Description:   v.Description,
 			Source:        result.Title,
 			PubDate:       pubDate,
+			FetchTime:     fetchTime,
 			OriginalIndex: idx, // 记录在RSS源中的原始索引
 		})
 	}
@@ -527,10 +545,22 @@ func UpdateFeedWithOptions(url, formattedTime string, isManual bool, forceReproc
 		}
 	}(url, allItemLinks, oldLinks, oldItemLinks, filteredItems)
 
-	// 确定最终展示的更新时间
-	lastUpdateTime := formattedTime
-	if !shouldUpdateDisplayTime && ok && cache.Custom["lastupdate"] != "已加载缓存" {
-		lastUpdateTime = cache.Custom["lastupdate"]
+	// 确定最终展示的更新时间（优先使用条目中最新的抓取时间）
+	lastUpdateTime := ""
+	for _, item := range filteredItems {
+		if item.FetchTime != "" {
+			if lastUpdateTime == "" || item.FetchTime > lastUpdateTime {
+				lastUpdateTime = item.FetchTime
+			}
+		}
+	}
+
+	if lastUpdateTime == "" {
+		// 如果没有条目，则回退到原有的逻辑
+		lastUpdateTime = formattedTime
+		if !shouldUpdateDisplayTime && ok && cache.Custom["lastupdate"] != "已加载缓存" {
+			lastUpdateTime = cache.Custom["lastupdate"]
+		}
 	}
 
 	customFeed := models.Feed{
@@ -617,6 +647,7 @@ func mergeWithCachedItems(url string, newItems []models.Item, cacheItems int) []
 			Link:         item.Link,
 			OriginalLink: item.OriginalLink, // 保留原始链接用于后处理缓存查询
 			PubDate:      item.PubDate,
+			FetchTime:    item.FetchTime,   // 保留抓取时间
 			// Description 和 Source 字段不保存到缓存
 		}
 	}
@@ -872,16 +903,6 @@ func addSourceItemsToFolder(folderFeed *models.Feed, sourceURL string, sourceNam
 		return
 	}
 
-	// 更新文件夹的最后更新时间
-	currentTime := folderFeed.Custom["lastupdate"]
-	cacheTime := cache.Custom["lastupdate"]
-
-	if currentTime == "加载中" && cacheTime != "加载中" {
-		folderFeed.Custom["lastupdate"] = cacheTime
-	} else if currentTime != "加载中" && cacheTime != "加载中" && cacheTime > currentTime {
-		folderFeed.Custom["lastupdate"] = cacheTime
-	}
-
 	// 添加条目
 	for _, item := range cache.Items {
 		// 如果指定了类别过滤，只添加匹配的条目
@@ -896,6 +917,14 @@ func addSourceItemsToFolder(folderFeed *models.Feed, sourceURL string, sourceNam
 			}
 			if !match {
 				continue
+			}
+		}
+
+		// 更新文件夹的最后更新时间（使用条目的抓取时间）
+		if item.FetchTime != "" {
+			currentTime := folderFeed.Custom["lastupdate"]
+			if currentTime == "加载中" || item.FetchTime > currentTime {
+				folderFeed.Custom["lastupdate"] = item.FetchTime
 			}
 		}
 

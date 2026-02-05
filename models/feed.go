@@ -24,6 +24,7 @@ type Item struct {
 	Description   string `json:"description"`
 	Source        string `json:"source,omitempty"`   // 来源（用于文件夹内区分不同源）
 	PubDate       string `json:"pubDate,omitempty"`  // 发布时间
+	FetchTime     string `json:"fetchTime,omitempty"` // 抓取时间
 	Category      string `json:"category,omitempty"` // AI分类结果
 	OriginalIndex int    `json:"-"`                    // RSS源中的原始索引（用于相同时间戳的次级排序，不输出到JSON）
 }

@@ -551,19 +551,39 @@ func ClassifyItems(items []models.Item, rssURL string) []models.Item {
 	}
 	pendingTasks := make([]classifyTask, 0)
 
-	// 1. 先检查缓存
+	// 1. 先检查缓存，同时检查关键词过滤
 	cacheHits := 0
+	keywordHits := 0
 	globals.ClassifyCacheLock.RLock()
 	for i, item := range items {
+		// 先检查缓存
 		cacheEntry, cached := globals.ClassifyCache[item.Link]
 		if cached && cacheEntry.Category != "" {
 			finalItems[i].Category = cacheEntry.Category
 			cacheHits++
-		} else {
-			pendingTasks = append(pendingTasks, classifyTask{index: i, item: item})
+			continue
 		}
+
+		// 检查关键词过滤（即便启用了AI，关键词过滤也优先进行以节省资源）
+		if strategy != nil && (strategy.IsKeywordEnabled() || strategy.IsWhitelistMode()) {
+			// 使用 ClassifyItemWithCategories 来统一处理关键词过滤逻辑（传 keywordOnly=true）
+			resp, _ := client.ClassifyItemWithCategories(item, strategy, categories, true)
+			if resp != nil && (resp.Category == "_filtered" || resp.Category == "_keep") {
+				finalItems[i].Category = resp.Category
+				keywordHits++
+				continue
+			}
+		}
+
+		// 缓存和关键词都没搞定，交给后续处理
+		pendingTasks = append(pendingTasks, classifyTask{index: i, item: item})
 	}
 	globals.ClassifyCacheLock.RUnlock()
+
+	// 更新统计
+	if keywordHits > 0 {
+		log.Printf("[关键词过滤] 源 [%s]: 关键词匹配 %d 篇", rssURL, keywordHits)
+	}
 
 	// 如果没有待处理任务，直接返回
 	if len(pendingTasks) == 0 {
@@ -701,9 +721,21 @@ func applyFiltersAndReturn(items []models.Item, strategy *models.ClassifyStrateg
 			rssURL, newItems, failedItems, cacheHits)
 	}
 
-	filteredItems := items
+	// 1. 首先过滤掉被关键词标记为 _filtered 的条目
+	filteredItems := make([]models.Item, 0, len(items))
+	keywordFilteredCount := 0
+	for _, item := range items {
+		if item.Category == "_filtered" {
+			keywordFilteredCount++
+			continue
+		}
+		filteredItems = append(filteredItems, item)
+	}
+	if keywordFilteredCount > 0 {
+		log.Printf("[关键词过滤] 源 [%s]: 过滤掉 %d 篇文章", rssURL, keywordFilteredCount)
+	}
 
-	// 应用类别黑白名单过滤
+	// 2. 应用类别黑白名单过滤
 	if strategy != nil && (len(strategy.CategoryWhitelist) > 0 || len(strategy.CategoryBlacklist) > 0) {
 		filteredItems = applyCategoryFilter(filteredItems, strategy)
 	}
@@ -745,6 +777,12 @@ func applyCategoryFilter(items []models.Item, strategy *models.ClassifyStrategy)
 
 	filtered := make([]models.Item, 0, len(items))
 	for _, item := range items {
+		// 如果是被关键词标记为 _keep 的，直接保留，跳过类别过滤
+		if item.Category == "_keep" {
+			filtered = append(filtered, item)
+			continue
+		}
+
 		// 如果有白名单，只保留白名单中的类别
 		if len(whitelistMap) > 0 {
 			if whitelistMap[item.Category] {
@@ -859,9 +897,35 @@ func ApplyScriptFilter(items []models.Item, scriptContent string, rssURL string)
 		return items, fmt.Errorf("脚本执行失败: %w", err)
 	}
 
+	// 如果输出为空，表示过滤掉了所有条目
+	trimmedOutput := strings.TrimSpace(string(output))
+	if trimmedOutput == "" {
+		return []models.Item{}, nil
+	}
+
 	// 解析脚本输出（应该是过滤后的条目数组）
 	var filteredItems []models.Item
 	if err := json.Unmarshal(output, &filteredItems); err != nil {
+		// 尝试解析是否是 JSON Lines 格式（每行一个 JSON 对象）
+		lines := strings.Split(trimmedOutput, "\n")
+		var itemsL []models.Item
+		validJSONLines := true
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			var item models.Item
+			if err := json.Unmarshal([]byte(line), &item); err != nil {
+				validJSONLines = false
+				break
+			}
+			itemsL = append(itemsL, item)
+		}
+		
+		if validJSONLines && len(itemsL) > 0 {
+			return itemsL, nil
+		}
 		return items, fmt.Errorf("解析脚本输出失败: %w, 输出: %s", err, string(output))
 	}
 

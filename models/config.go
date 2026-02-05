@@ -193,7 +193,7 @@ type ClassifyStrategy struct {
 	WhitelistMode *bool `json:"whitelistMode,omitempty"`
 	// 是否启用脚本规则过滤
 	ScriptFilterEnabled *bool `json:"scriptFilterEnabled,omitempty"`
-	// 脚本规则过滤的脚本内容（JavaScript）
+	// 脚本规则过滤的脚本内容（Shell 脚本，通过 stdin 接收条目的 JSON 数组）
 	ScriptFilterContent string `json:"scriptFilterContent,omitempty"`
 	// 绑定的类别ID列表（发送给AI时仅包含这些类别，为空表示全选）
 	BoundCategories []string `json:"boundCategories,omitempty"`

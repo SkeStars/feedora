@@ -3166,7 +3166,6 @@
             modifyLink: false,
             modifyPubDate: false
           },
-          editingGroups: [],
           touchStartX: 0,
           touchStartY: 0,
           clearingCache: null, // 用于跟踪正在清除的缓存类型
@@ -3235,6 +3234,7 @@
           if (val) {
             this.$nextTick(() => {
               if (this.$refs.layoutItemsTable) this.$refs.layoutItemsTable.doLayout();
+              this.initItemLayoutSortable();
             });
           }
         },
@@ -3248,7 +3248,6 @@
             }, 60);
 
             if (val === 'layoutGroups') {
-              this.syncEditingGroups();
               this.initGroupSortable();
             } else if (val === 'folders') {
               // 这里可以初始化文件夹列表的排序（如果需要）
@@ -4211,28 +4210,33 @@
               forceFallback: !this.isPc,
               onEnd: ({ newIndex, oldIndex }) => {
                 if (newIndex === oldIndex) return;
-                const item = this.editingGroups.splice(oldIndex, 1)[0];
-                this.editingGroups.splice(newIndex, 0, item);
+                const item = this.config.layoutGroups.splice(oldIndex, 1)[0];
+                this.config.layoutGroups.splice(newIndex, 0, item);
               }
             });
           }
         },
-        syncEditingGroups() {
-          if (!this.config) return;
-          const derivedGroups = new Set();
-          this.config.sources.forEach(s => derivedGroups.add(s.group || '关注'));
-
-          // Current existing in editingGroups
-          const currentNames = this.editingGroups.map(g => g.name);
-
-          // Add any new ones detected in sources
-          derivedGroups.forEach(g => {
-            if (!currentNames.includes(g)) {
-              this.editingGroups.push({ name: g });
-            }
-          });
-          // Note: we do not remove groups that are in editingGroups but not in sources,
-          // to preserve order if temporary empty, or let user delete manually (if we added delete button, but we didn't)
+        initItemLayoutSortable() {
+          const el = this.isPc
+            ? document.querySelector('.layout-items-table .el-table__body-wrapper tbody')
+            : document.querySelector('.layout-items-list');
+          if (el && !el._sortable) {
+            el._sortable = Sortable.create(el, {
+              animation: 150,
+              handle: this.isPc ? '.drag-handle' : '.drag-handle-mobile',
+              delay: 50,
+              delayOnTouchOnly: true,
+              touchStartThreshold: 5,
+              fallbackTolerance: 5,
+              forceFallback: !this.isPc,
+              onEnd: ({ newIndex, oldIndex }) => {
+                if (newIndex === oldIndex) return;
+                const items = this.currentLayoutGroup.items;
+                const item = items.splice(oldIndex, 1)[0];
+                items.splice(newIndex, 0, item);
+              }
+            });
+          }
         },
         resetCategories() {
           if (!this.config || !this.config.aiClassify) return;

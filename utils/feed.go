@@ -197,6 +197,19 @@ func GetCustomIconURL(rssURL string, customIcon string) string {
 	return GetFaviconURL(rssURL)
 }
 
+// GetMaxFetchTime 获取条目列表中的最新抓取时间
+func GetMaxFetchTime(items []models.Item) string {
+	maxTime := ""
+	for _, item := range items {
+		if item.FetchTime != "" {
+			if maxTime == "" || item.FetchTime > maxTime {
+				maxTime = item.FetchTime
+			}
+		}
+	}
+	return maxTime
+}
+
 // FetchAndCacheIcon 获取并缓存图标
 func FetchAndCacheIcon(iconURL string) ([]byte, string, error) {
 	// 尝试从数据库获取
@@ -346,8 +359,13 @@ func UpdateFeedWithOptions(url, formattedTime string, isManual bool, forceReproc
 
 			// 仅在重启后（标记为“已加载缓存”）且抓取成功时，才强制更新时间
 			globals.Lock.Lock()
-			if c, exists := globals.DbMap[url]; exists && c.Custom != nil && c.Custom["lastupdate"] == "已加载缓存" {
-				c.Custom["lastupdate"] = formattedTime
+			if c, exists := globals.DbMap[url]; exists && c.Custom != nil && (c.Custom["lastupdate"] == "已加载缓存" || c.Custom["lastupdate"] == "加载中") {
+				maxFT := GetMaxFetchTime(c.Items)
+				if maxFT != "" {
+					c.Custom["lastupdate"] = maxFT
+				} else {
+					c.Custom["lastupdate"] = formattedTime
+				}
 				globals.DbMap[url] = c
 			}
 			globals.Lock.Unlock()
@@ -588,19 +606,12 @@ func UpdateFeedWithOptions(url, formattedTime string, isManual bool, forceReproc
 	}(url, allItemLinks, oldLinks, oldItemLinks, filteredItems)
 
 	// 确定最终展示的更新时间（优先使用条目中最新的抓取时间）
-	lastUpdateTime := ""
-	for _, item := range filteredItems {
-		if item.FetchTime != "" {
-			if lastUpdateTime == "" || item.FetchTime > lastUpdateTime {
-				lastUpdateTime = item.FetchTime
-			}
-		}
-	}
+	lastUpdateTime := GetMaxFetchTime(filteredItems)
 
 	if lastUpdateTime == "" {
 		// 如果没有条目，则回退到原有的逻辑
 		lastUpdateTime = formattedTime
-		if !shouldUpdateDisplayTime && ok && cache.Custom["lastupdate"] != "已加载缓存" {
+		if !shouldUpdateDisplayTime && ok && cache.Custom != nil && cache.Custom["lastupdate"] != "已加载缓存" && cache.Custom["lastupdate"] != "加载中" {
 			lastUpdateTime = cache.Custom["lastupdate"]
 		}
 	}
@@ -929,6 +940,40 @@ func buildFolderFeed(folder models.Folder, groupName string) *models.Feed {
 	}
 	folderFeed.Items = uniqueItems
 
+	// 确定文件夹的最后更新时间（取所有条目中最新的抓取时间）
+	lastUpdate := GetMaxFetchTime(folderFeed.Items)
+	if lastUpdate != "" {
+		folderFeed.Custom["lastupdate"] = lastUpdate
+	} else if len(folderFeed.Items) > 0 {
+		// 如果条目都没有抓取时间，回退到发布时间
+		for _, item := range folderFeed.Items {
+			if item.PubDate != "" {
+				if lastUpdate == "" || item.PubDate > lastUpdate {
+					lastUpdate = item.PubDate
+				}
+			}
+		}
+		if lastUpdate != "" {
+			folderFeed.Custom["lastupdate"] = lastUpdate
+		} else {
+			folderFeed.Custom["lastupdate"] = "无抓取时间"
+		}
+	} else {
+		// 检查是否有加载失败的条目
+		hasError := false
+		for _, item := range folderFeed.Items {
+			if strings.Contains(item.Title, "⚠️") {
+				hasError = true
+				break
+			}
+		}
+		if hasError {
+			folderFeed.Custom["lastupdate"] = "加载失败"
+		} else {
+			folderFeed.Custom["lastupdate"] = "无条目"
+		}
+	}
+
 	return folderFeed
 }
 
@@ -954,16 +999,6 @@ func addSourceItemsToFolder(folderFeed *models.Feed, sourceURL string, sourceNam
 		return
 	}
 
-	// 获取源的 lastupdate 作为 FetchTime 的备用值
-	sourceLastUpdate := ""
-	if cache.Custom != nil {
-		sourceLastUpdate = cache.Custom["lastupdate"]
-		// 过滤掉非时间字符串
-		if sourceLastUpdate == "加载中" || sourceLastUpdate == "已加载缓存" {
-			sourceLastUpdate = ""
-		}
-	}
-
 	// 添加条目
 	for _, item := range cache.Items {
 		// 如果指定了类别过滤，只添加匹配的条目
@@ -978,18 +1013,6 @@ func addSourceItemsToFolder(folderFeed *models.Feed, sourceURL string, sourceNam
 			}
 			if !match {
 				continue
-			}
-		}
-
-		// 更新文件夹的最后更新时间（使用条目的抓取时间，若无则用源的 lastupdate）
-		effectiveTime := item.FetchTime
-		if effectiveTime == "" {
-			effectiveTime = sourceLastUpdate
-		}
-		if effectiveTime != "" {
-			currentTime := folderFeed.Custom["lastupdate"]
-			if currentTime == "加载中" || effectiveTime > currentTime {
-				folderFeed.Custom["lastupdate"] = effectiveTime
 			}
 		}
 

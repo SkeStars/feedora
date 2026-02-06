@@ -3317,7 +3317,7 @@
           if (!dateStr) return '';
 
           // 如果是错误消息或状态文本，直接返回
-          if (dateStr.includes('加载失败') || dateStr.includes('重试') || dateStr === '加载中' || dateStr === '已加载缓存') {
+          if (dateStr.includes('失败') || dateStr.includes('重试') || dateStr.includes('加载') || dateStr.includes('暂无') || dateStr.includes('无条目')) {
             return dateStr;
           }
 
@@ -4869,6 +4869,9 @@
     // 服务端渲染的时间转换为相对时间
     function timeAgo(dateStr) {
       if (!dateStr) return '';
+      if (dateStr.includes('失败') || dateStr.includes('重试') || dateStr.includes('加载') || dateStr.includes('暂无') || dateStr.includes('无条目')) {
+        return dateStr;
+      }
       // RFC3339 格式可以直接解析，包含时区信息
       const date = new Date(dateStr);
       const now = new Date();

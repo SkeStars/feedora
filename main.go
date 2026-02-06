@@ -53,6 +53,7 @@ func main() {
 	http.HandleFunc("/api/save-config", saveConfigHandler)
 	http.HandleFunc("/api/clear-cache", clearCacheHandler)
 	http.HandleFunc("/api/icon", iconHandler)
+	http.HandleFunc("/api/next-update", nextUpdateHandler)
 
 	//加载静态文件
 	fs := http.FileServer(http.FS(globals.DirStatic))
@@ -443,6 +444,19 @@ func saveConfigHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{"success":true}`))
 }
+
+// nextUpdateHandler 获取下次更新时间
+func nextUpdateHandler(w http.ResponseWriter, r *http.Request) {
+	globals.Lock.RLock()
+	nextUpdate := globals.NextUpdateTime
+	globals.Lock.RUnlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"nextUpdateTime": nextUpdate.Format(time.RFC3339),
+	})
+}
+
 // clearCacheHandler 清除指定源的缓存并重新处理
 func clearCacheHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

@@ -3260,6 +3260,38 @@
         },
       },
       methods: {
+        async refreshData() {
+          try {
+            const [feedsRes, nextUpdateRes] = await Promise.all([
+              fetch('/feeds'),
+              fetch('/api/next-update')
+            ]);
+
+            if (feedsRes.ok) {
+              this.feeds = await feedsRes.json();
+            }
+
+            if (nextUpdateRes.ok) {
+              const data = await nextUpdateRes.json();
+              this.targetTimeStr = data.nextUpdateTime;
+              const target = new Date(this.targetTimeStr);
+              if (!isNaN(target.getTime()) && target.getFullYear() > 2000) {
+                const now = new Date();
+                let diff = Math.floor((target - now) / 1000);
+                if (diff <= 0) {
+                  this.countdown = 10;
+                } else {
+                  this.countdown = diff;
+                }
+              } else {
+                this.countdown = -1;
+              }
+              this.updateCountdown();
+            }
+          } catch (e) {
+            console.error('Failed to refresh data:', e);
+          }
+        },
         generateId(prefix) {
           return prefix + "_" + Math.random().toString(36).substr(2, 6);
         },
@@ -4808,12 +4840,9 @@
               this.updateCountdown();
             } else if (this.countdown === 0) {
               // 倒计时结束
-              clearInterval(timer);
-              this.nextUpdateTime = '刷新网页中...';
-              // 5秒后刷新页面
-              setTimeout(() => {
-                location.reload();
-              }, 5000);
+              this.countdown = -1; 
+              this.nextUpdateTime = '更新中...';
+              this.refreshData();
             } else {
               // countdown < 0, 不执行倒计时
             }

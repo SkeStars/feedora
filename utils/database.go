@@ -523,7 +523,7 @@ func DBSaveItemsCache(rssURL string, items []DBItemsCacheEntry) error {
 	}
 
 	// 插入新缓存
-	stmt, err := tx.Prepare("INSERT INTO items_cache (rss_url, title, link, original_link, pub_date, fetch_time) VALUES (?, ?, ?, ?, ?, ?)")
+	stmt, err := tx.Prepare("INSERT OR REPLACE INTO items_cache (rss_url, title, link, original_link, pub_date, fetch_time) VALUES (?, ?, ?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}

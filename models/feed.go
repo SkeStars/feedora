@@ -27,7 +27,8 @@ type Item struct {
 	PubDate       string `json:"pubDate,omitempty"`  // 发布时间
 	FetchTime     string `json:"fetchTime,omitempty"` // 抓取时间
 	Category      string `json:"category,omitempty"` // AI分类结果
-	OriginalIndex int    `json:"-"`                    // RSS源中的原始索引（用于相同时间戳的次级排序，不输出到JSON）
+	ForceKeep     bool   `json:"-"`                   // 是否由关键词白名单强制保留
+	OriginalIndex int    `json:"-"`                   // RSS源中的原始索引（用于相同时间戳的次级排序，不输出到JSON）
 }
 
 // ClassifyCacheEntry AI分类结果缓存条目

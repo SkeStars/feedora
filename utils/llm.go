@@ -551,31 +551,49 @@ func ClassifyItems(items []models.Item, rssURL string) []models.Item {
 	}
 	pendingTasks := make([]classifyTask, 0)
 
-	// 1. 先检查缓存，同时检查关键词过滤
+	// 1. 先检查关键词过滤，再检查缓存
 	cacheHits := 0
 	keywordHits := 0
 	globals.ClassifyCacheLock.RLock()
 	for i, item := range items {
-		// 先检查缓存
-		cacheEntry, cached := globals.ClassifyCache[item.Link]
-		if cached && cacheEntry.Category != "" {
-			finalItems[i].Category = cacheEntry.Category
-			cacheHits++
-			continue
-		}
-
-		// 检查关键词过滤（即便启用了AI，关键词过滤也优先进行以节省资源）
+		// 1.1 检查关键词过滤（即便启用了AI，关键词过滤也优先进行以节省资源）
 		if strategy != nil && (strategy.IsKeywordEnabled() || strategy.IsWhitelistMode()) {
 			// 使用 ClassifyItemWithCategories 来统一处理关键词过滤逻辑（传 keywordOnly=true）
 			resp, _ := client.ClassifyItemWithCategories(item, strategy, categories, true)
-			if resp != nil && (resp.Category == "_filtered" || resp.Category == "_keep") {
-				finalItems[i].Category = resp.Category
-				keywordHits++
+			if resp != nil {
+				if resp.Category == "_filtered" {
+					finalItems[i].Category = resp.Category
+					keywordHits++
+					continue
+				}
+				if resp.Category == "_keep" {
+					// 标记为强制保留，以便后续 bypass 类别过滤
+					finalItems[i].ForceKeep = true
+					// 如果不使用 AI，则标记分类并跳过
+					if !useAI {
+						finalItems[i].Category = resp.Category
+						keywordHits++
+						continue
+					}
+					// 如果使用 AI，则不 continue，将其加入待处理任务以获取 AI 分类标签 (如果缓存中没有)
+				}
+			}
+		}
+
+		// 1.2 检查缓存
+		cacheEntry, cached := globals.ClassifyCache[item.Link]
+		if cached && cacheEntry.Category != "" {
+			// 如果命中关键词白名单，但缓存里是过滤标记，则忽略缓存进入 AI 处理（以防规则更新）
+			if finalItems[i].ForceKeep && cacheEntry.Category == "_filtered" {
+				// 忽略缓存，进入 AI 处理获取分类标签
+			} else {
+				finalItems[i].Category = cacheEntry.Category
+				cacheHits++
 				continue
 			}
 		}
 
-		// 缓存和关键词都没搞定，交给后续处理
+		// 关键词和缓存都没搞定，交给后续处理
 		pendingTasks = append(pendingTasks, classifyTask{index: i, item: item})
 	}
 	globals.ClassifyCacheLock.RUnlock()
@@ -725,7 +743,8 @@ func applyFiltersAndReturn(items []models.Item, strategy *models.ClassifyStrateg
 	filteredItems := make([]models.Item, 0, len(items))
 	keywordFilteredCount := 0
 	for _, item := range items {
-		if item.Category == "_filtered" {
+		// 如果被标记为 _filtered 且不是强制保留，则过滤
+		if item.Category == "_filtered" && !item.ForceKeep {
 			keywordFilteredCount++
 			continue
 		}
@@ -777,8 +796,8 @@ func applyCategoryFilter(items []models.Item, strategy *models.ClassifyStrategy)
 
 	filtered := make([]models.Item, 0, len(items))
 	for _, item := range items {
-		// 如果是被关键词标记为 _keep 的，直接保留，跳过类别过滤
-		if item.Category == "_keep" {
+		// 如果是被关键词标记为 _keep 的，或者标记为强制保留的（如白名单命中），直接保留，跳过类别过滤
+		if item.Category == "_keep" || item.ForceKeep {
 			filtered = append(filtered, item)
 			continue
 		}

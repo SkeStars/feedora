@@ -2763,7 +2763,7 @@
             <template v-if="tempScriptFilterEnabled">
               <el-form-item label="脚本规则">
                 <el-input type="textarea" :rows="6" v-model="tempFilterSettings.scriptFilterContent"
-                  placeholder="#!/bin/bash&#10;# 从stdin读取所有条目的JSON数组，输出过滤后的JSON数组&#10;input=$(cat)&#10;# 使用jq处理，示例：保留发布时间一致的第一条&#10;echo &quot;$input&quot; | jq '[group_by(.pubDate) | .[] | .[0]]'"></el-input>
+                  placeholder="#!/bin/bash&#10;# 从stdin读取所有条目的JSON数组，输出过滤后的JSON数组&#10;input=$(cat)&#10;# 使用jq处理，示例：保留发布时间一致的最后一条&#10;echo &quot;$input&quot; | jq '[group_by(.pubDate) | .[] | .[-1]]'"></el-input>
                 <div class="tip">Bash脚本，通过stdin接收JSON数组，输出过滤后的JSON数组。<el-link type="primary"
                     @click="showScriptHelp = !showScriptHelp" style="margin-left: 5px;">{{ showScriptHelp ? '收起' : '查看'
                     }}示例</el-link></div>
@@ -2775,11 +2775,11 @@
                     </div>
                     <div style="margin-top: 8px;"><strong>常用示例：</strong></div>
                     <div style="line-height: 1.8;">
-                      • 保留发布时间相同的第一条: <code style="font-size: 11px;">jq '[group_by(.pubDate) | .[] | .[0]]'</code><br>
+                      • 保留发布时间相同的最后一条: <code style="font-size: 11px;">jq '[group_by(.pubDate) | .[] | .[-1]]'</code><br>
                       • 保留标题相同的第一条: <code style="font-size: 11px;">jq '[group_by(.title) | .[] | .[0]]'</code><br>
                       • 限制前20条: <code style="font-size: 11px;">jq '.[:20]'</code><br>
                       • 过滤包含关键词: <code style="font-size: 11px;">jq '[.[] | select(.title | contains("关键词"))]'</code><br>
-                      • 组合使用: <code style="font-size: 11px;">jq '[group_by(.pubDate) | .[] | .[0]] | .[:20]'</code>
+                      • 组合使用: <code style="font-size: 11px;">jq '[group_by(.pubDate) | .[] | .[-1]] | .[:20]'</code>
                     </div>
                   </div>
                 </el-collapse-transition>

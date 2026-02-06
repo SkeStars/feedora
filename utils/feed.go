@@ -650,11 +650,16 @@ func cleanupPostProcessCacheForSource(oldLinks []string, newLinks map[string]boo
 
 // mergeWithCachedItems 将新条目与缓存的旧条目合并，保持总数达到 cacheItems
 func mergeWithCachedItems(url string, newItems []models.Item, cacheItems int) []models.Item {
-	// 构建新条目的链接集合，用于去重
+	// 构建链接集合用于去重，并首先对新条目内部去重
+	uniqueNewItems := make([]models.Item, 0, len(newItems))
 	newLinks := make(map[string]bool)
 	for _, item := range newItems {
-		newLinks[item.Link] = true
+		if item.Link != "" && !newLinks[item.Link] {
+			newLinks[item.Link] = true
+			uniqueNewItems = append(uniqueNewItems, item)
+		}
 	}
+	newItems = uniqueNewItems
 
 	// 从缓存中获取旧条目
 	cachedItems, hasCached := GetItemsCache(url)
@@ -665,8 +670,9 @@ func mergeWithCachedItems(url string, newItems []models.Item, cacheItems int) []
 
 	if hasCached {
 		for _, item := range cachedItems {
-			// 只添加不在新条目中的旧条目
-			if !newLinks[item.Link] {
+			// 只添加不在新列表中的旧条目，且旧条目本身也要去重（以防万一）
+			if item.Link != "" && !newLinks[item.Link] {
+				newLinks[item.Link] = true
 				mergedItems = append(mergedItems, item)
 			}
 			// 达到缓存数量限制后停止

@@ -123,6 +123,9 @@ func createTables() error {
 		return fmt.Errorf("创建 items_cache 索引失败: %w", err)
 	}
 
+	// 数据库迁移：为 items_cache 添加 fetch_time 列（兼容旧版本）
+	_, _ = DB.Exec(`ALTER TABLE items_cache ADD COLUMN fetch_time TEXT`)
+
 	return nil
 }
 
@@ -457,11 +460,12 @@ type DBItemsCacheEntry struct {
 	Link         string
 	OriginalLink string
 	PubDate      string
+	FetchTime    string
 }
 
 // DBLoadItemsCache 从数据库加载条目缓存
 func DBLoadItemsCache() (map[string][]DBItemsCacheEntry, error) {
-	rows, err := DB.Query("SELECT rss_url, title, link, original_link, pub_date FROM items_cache ORDER BY rss_url, id")
+	rows, err := DB.Query("SELECT rss_url, title, link, original_link, pub_date, fetch_time FROM items_cache ORDER BY rss_url, id")
 	if err != nil {
 		return nil, err
 	}
@@ -470,12 +474,13 @@ func DBLoadItemsCache() (map[string][]DBItemsCacheEntry, error) {
 	cache := make(map[string][]DBItemsCacheEntry)
 	for rows.Next() {
 		var entry DBItemsCacheEntry
-		var originalLink, pubDate sql.NullString
-		if err := rows.Scan(&entry.RssURL, &entry.Title, &entry.Link, &originalLink, &pubDate); err != nil {
+		var originalLink, pubDate, fetchTime sql.NullString
+		if err := rows.Scan(&entry.RssURL, &entry.Title, &entry.Link, &originalLink, &pubDate, &fetchTime); err != nil {
 			return nil, err
 		}
 		entry.OriginalLink = originalLink.String
 		entry.PubDate = pubDate.String
+		entry.FetchTime = fetchTime.String
 		cache[entry.RssURL] = append(cache[entry.RssURL], entry)
 	}
 	return cache, rows.Err()
@@ -483,7 +488,7 @@ func DBLoadItemsCache() (map[string][]DBItemsCacheEntry, error) {
 
 // DBLoadItemsCacheForURL 从数据库加载指定URL的条目缓存
 func DBLoadItemsCacheForURL(rssURL string) ([]DBItemsCacheEntry, error) {
-	rows, err := DB.Query("SELECT rss_url, title, link, original_link, pub_date FROM items_cache WHERE rss_url = ? ORDER BY id", rssURL)
+	rows, err := DB.Query("SELECT rss_url, title, link, original_link, pub_date, fetch_time FROM items_cache WHERE rss_url = ? ORDER BY id", rssURL)
 	if err != nil {
 		return nil, err
 	}
@@ -492,12 +497,13 @@ func DBLoadItemsCacheForURL(rssURL string) ([]DBItemsCacheEntry, error) {
 	var items []DBItemsCacheEntry
 	for rows.Next() {
 		var entry DBItemsCacheEntry
-		var originalLink, pubDate sql.NullString
-		if err := rows.Scan(&entry.RssURL, &entry.Title, &entry.Link, &originalLink, &pubDate); err != nil {
+		var originalLink, pubDate, fetchTime sql.NullString
+		if err := rows.Scan(&entry.RssURL, &entry.Title, &entry.Link, &originalLink, &pubDate, &fetchTime); err != nil {
 			return nil, err
 		}
 		entry.OriginalLink = originalLink.String
 		entry.PubDate = pubDate.String
+		entry.FetchTime = fetchTime.String
 		items = append(items, entry)
 	}
 	return items, rows.Err()
@@ -517,14 +523,14 @@ func DBSaveItemsCache(rssURL string, items []DBItemsCacheEntry) error {
 	}
 
 	// 插入新缓存
-	stmt, err := tx.Prepare("INSERT INTO items_cache (rss_url, title, link, original_link, pub_date) VALUES (?, ?, ?, ?, ?)")
+	stmt, err := tx.Prepare("INSERT INTO items_cache (rss_url, title, link, original_link, pub_date, fetch_time) VALUES (?, ?, ?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
 	for _, item := range items {
-		if _, err := stmt.Exec(item.RssURL, item.Title, item.Link, item.OriginalLink, item.PubDate); err != nil {
+		if _, err := stmt.Exec(item.RssURL, item.Title, item.Link, item.OriginalLink, item.PubDate, item.FetchTime); err != nil {
 			return err
 		}
 	}

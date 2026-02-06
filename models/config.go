@@ -277,6 +277,8 @@ type Source struct {
 	Classify *ClassifyStrategy `json:"classify,omitempty"`
 	// 忽略原始发布时间：启用后将忽略RSS源自带的发布时间，使用首次出现时间代替
 	IgnoreOriginalPubDate bool `json:"ignoreOriginalPubDate,omitempty"`
+	// 榜单模式：启用后每次获取的条目都按原始排列顺序展示，不读取缓存中的发布时间
+	RankingMode bool `json:"rankingMode,omitempty"`
 	// 最大读取条目数，超过此数量的条目将不会被加载（0或不设置表示不限制）
 	MaxItems int `json:"maxItems,omitempty"`
 	// 缓存条目数：0或不设置表示自动缓存所有过滤后的条目，>0表示缓存指定数量，-1表示禁用缓存

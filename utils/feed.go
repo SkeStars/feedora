@@ -169,6 +169,16 @@ func ShouldIgnoreOriginalPubDate(rssURL string) bool {
 	return false
 }
 
+// IsRankingMode 检查指定URL是否启用了榜单模式
+func IsRankingMode(rssURL string) bool {
+	for _, source := range globals.RssUrls.Sources {
+		if source.URL == rssURL {
+			return source.RankingMode
+		}
+	}
+	return false
+}
+
 // GetMaxItems 获取指定URL的最大读取条目数限制，返回0表示不限制
 func GetMaxItems(rssURL string) int {
 	for _, source := range globals.RssUrls.Sources {
@@ -255,8 +265,35 @@ func UpdateFeedWithOptions(url, formattedTime string, isManual bool, forceReproc
 
 	log.Printf("%s [抓取成功] 源: %s | 条目数: %d", prefix, result.Title, len(result.Items))
 
+	// 如果源名称为空，则使用抓取到的标题
+	func(u string, title string) {
+		if title == "" {
+			return
+		}
+		globals.Lock.Lock()
+		defer globals.Lock.Unlock()
+		changed := false
+		for i := range globals.RssUrls.Sources {
+			if globals.RssUrls.Sources[i].URL == u && globals.RssUrls.Sources[i].Name == "" {
+				globals.RssUrls.Sources[i].Name = title
+				changed = true
+				break
+			}
+		}
+		if changed {
+			// 保存配置
+			if err := SaveConfig(globals.RssUrls); err != nil {
+				log.Printf("[配置] 自动更新源名称失败: %v", err)
+			} else {
+				log.Printf("[配置] 已自动为源 %s 设置名称: %s", u, title)
+			}
+		}
+	}(url, result.Title)
+
 	// 检查是否忽略原始发布时间
 	ignoreOriginalPubDate := ShouldIgnoreOriginalPubDate(url)
+	// 检查是否启用榜单模式
+	rankingMode := IsRankingMode(url)
 
 	// 快速判断内容是否有更新
 	globals.Lock.RLock()
@@ -361,12 +398,17 @@ func UpdateFeedWithOptions(url, formattedTime string, isManual bool, forceReproc
 
 	// 先构建所有Items
 	allItems := make([]models.Item, 0, len(result.Items))
+	rankingBaseTime := time.Now()
 	for idx, v := range result.Items {
 		pubDate := ""
 		fetchTime := ""
 
-		if ignoreOriginalPubDate {
-			// 忽略原始发布时间模式：总是从缓存恢复或使用当前时间
+		if rankingMode {
+			// 榜单模式：每次都按照原始排列顺序分配递减的时间戳，确保排序后保持RSS源的原始顺序
+			// 不从缓存读取发布时间
+			pubDate = rankingBaseTime.Add(-time.Duration(idx) * time.Second).Format(time.RFC3339)
+		} else if ignoreOriginalPubDate {
+			// 强制增量模式：总是从缓存恢复或使用当前时间
 			if cached, ok := cachedPubDates[v.Link]; ok {
 				pubDate = cached
 			} else {
@@ -648,6 +690,7 @@ func mergeWithCachedItems(url string, newItems []models.Item, cacheItems int) []
 			OriginalLink: item.OriginalLink, // 保留原始链接用于后处理缓存查询
 			PubDate:      item.PubDate,
 			FetchTime:    item.FetchTime,   // 保留抓取时间
+			Category:     item.Category,    // 保留分类信息
 			// Description 和 Source 字段不保存到缓存
 		}
 	}
@@ -774,6 +817,8 @@ func buildSourceFeed(sourceURL string, groupName string) *models.Feed {
 	result.ShowPubDate = source.ShowPubDate
 	// 设置是否显示分类标签
 	result.ShowCategory = source.ShowCategory
+	// 设置是否为榜单模式
+	result.RankingMode = source.RankingMode
 
 	return &result
 }
@@ -903,6 +948,16 @@ func addSourceItemsToFolder(folderFeed *models.Feed, sourceURL string, sourceNam
 		return
 	}
 
+	// 获取源的 lastupdate 作为 FetchTime 的备用值
+	sourceLastUpdate := ""
+	if cache.Custom != nil {
+		sourceLastUpdate = cache.Custom["lastupdate"]
+		// 过滤掉非时间字符串
+		if sourceLastUpdate == "加载中" || sourceLastUpdate == "已加载缓存" {
+			sourceLastUpdate = ""
+		}
+	}
+
 	// 添加条目
 	for _, item := range cache.Items {
 		// 如果指定了类别过滤，只添加匹配的条目
@@ -920,11 +975,15 @@ func addSourceItemsToFolder(folderFeed *models.Feed, sourceURL string, sourceNam
 			}
 		}
 
-		// 更新文件夹的最后更新时间（使用条目的抓取时间）
-		if item.FetchTime != "" {
+		// 更新文件夹的最后更新时间（使用条目的抓取时间，若无则用源的 lastupdate）
+		effectiveTime := item.FetchTime
+		if effectiveTime == "" {
+			effectiveTime = sourceLastUpdate
+		}
+		if effectiveTime != "" {
 			currentTime := folderFeed.Custom["lastupdate"]
-			if currentTime == "加载中" || item.FetchTime > currentTime {
-				folderFeed.Custom["lastupdate"] = item.FetchTime
+			if currentTime == "加载中" || effectiveTime > currentTime {
+				folderFeed.Custom["lastupdate"] = effectiveTime
 			}
 		}
 
@@ -1000,7 +1059,7 @@ func WatchConfigFileChanges(filePath string) {
 			}
 
 			log.Printf("配置更新：%d 个源受影响，开始更新", len(affectedUrls))
-			formattedTime := time.Now().Format("2006-01-02 15:04:05")
+			formattedTime := time.Now().Format(time.RFC3339)
 
 			for url := range affectedUrls {
 				go UpdateFeedWithOptions(url, formattedTime, true, true)
@@ -1052,7 +1111,7 @@ func WatchConfigFileChanges(filePath string) {
 
 // RefreshSingleFeed 刷新单个源
 func RefreshSingleFeed(link string) error {
-	formattedTime := time.Now().Format("2006-01-02 15:04:05")
+	formattedTime := time.Now().Format(time.RFC3339)
 	log.Printf("[手动刷新] 开始刷新: %s", link)
 
 	// 检查是否是文件夹链接
@@ -1131,7 +1190,7 @@ func RefreshSingleFeed(link string) error {
 
 // RefreshSingleFeedForce 强制刷新单个源并重新处理（跳过内容变化检测）
 func RefreshSingleFeedForce(link string) error {
-	formattedTime := time.Now().Format("2006-01-02 15:04:05")
+	formattedTime := time.Now().Format(time.RFC3339)
 	log.Printf("[强制重处理] 开始刷新: %s", link)
 
 	// 查找匹配的源
@@ -1205,7 +1264,8 @@ func sourceChanged(old, new *models.Source) bool {
 	// 检查影响数据获取或处理的关键配置
 	if old.MaxItems != new.MaxItems ||
 		old.CacheItems != new.CacheItems ||
-		old.IgnoreOriginalPubDate != new.IgnoreOriginalPubDate {
+		old.IgnoreOriginalPubDate != new.IgnoreOriginalPubDate ||
+		old.RankingMode != new.RankingMode {
 		return true
 	}
 

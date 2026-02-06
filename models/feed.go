@@ -15,6 +15,7 @@ type Feed struct {
 	ShowPubDate   bool              `json:"showPubDate,omitempty"`  // 是否在条目后显示发布时间
 	ShowCategory  bool              `json:"showCategory,omitempty"` // 是否显示分类标签
 	ShowSource    bool              `json:"showSource,omitempty"`   // 是否显示源名称标签
+	RankingMode   bool              `json:"rankingMode,omitempty"`  // 是否为榜单模式
 }
 
 type Item struct {

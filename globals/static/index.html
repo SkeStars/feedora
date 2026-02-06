@@ -2257,8 +2257,7 @@
                       style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                       <div style="display: flex; gap: 10px; align-items: center;">
                         <el-tag size="medium" effect="dark">分类包</el-tag>
-                        <el-input v-model="pkg.name" size="small" style="width: 200px;" placeholder="包名称"></el-input>
-                        <el-input v-model="pkg.id" size="small" style="width: 150px;" placeholder="包ID"></el-input>
+                        <el-input v-model="pkg.name" size="small" style="width: 250px;" placeholder="包名称"></el-input>
                       </div>
                       <el-button type="danger" size="mini" circle @click="removePackage(pkgIndex)">
                         <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="12" height="12"
@@ -2699,9 +2698,14 @@
               <div class="tip">限制从RSS源读取的最大条目数 (0表示不限制)</div>
             </el-form-item>
 
-            <el-form-item label="忽略原始时间">
-              <el-switch v-model="currentEditingFeed.ignoreOriginalPubDate"></el-switch>
-              <div class="tip">忽略RSS源自带的发布时间，使用首次出现时间代替</div>
+            <el-form-item label="强制增量模式">
+              <el-switch v-model="currentEditingFeed.ignoreOriginalPubDate" @change="onIgnoreOriginalPubDateChange"></el-switch>
+              <div class="tip">强制将发布时间使用首次出现时间代替</div>
+            </el-form-item>
+
+            <el-form-item label="榜单模式">
+              <el-switch v-model="currentEditingFeed.rankingMode" @change="onRankingModeChange"></el-switch>
+              <div class="tip">每次刷新按原始排列顺序展示</div>
             </el-form-item>
 
             <el-form-item label="缓存条数">
@@ -3045,7 +3049,7 @@
                         <div class="list-item-title" :class="{ 'item-read': isRead(item.link) }"
                           @click="markAsRead(item.link)">
                           <div class="number-wrapper">
-                            <span class="item-number">{{ i+1 }}</span>
+                            <span class="item-number" :style="rankingNumberStyle(feed, item)">{{ i+1 }}</span>
                           </div>
                           <span class="item-content">
                             <el-link :href="item.link" target="_blank" @click.stop="markAsRead(item.link, false)">
@@ -3256,6 +3260,9 @@
         },
       },
       methods: {
+        generateId(prefix) {
+          return prefix + "_" + Math.random().toString(36).substr(2, 6);
+        },
         togglePubDate(feed) {
           feed.showPubDate = !feed.showPubDate;
         },
@@ -3277,8 +3284,8 @@
         timeAgo(dateStr) {
           if (!dateStr) return '';
 
-          // 如果是错误消息，直接返回
-          if (dateStr.includes('加载失败') || dateStr.includes('重试')) {
+          // 如果是错误消息或状态文本，直接返回
+          if (dateStr.includes('加载失败') || dateStr.includes('重试') || dateStr === '加载中' || dateStr === '已加载缓存') {
             return dateStr;
           }
 
@@ -3305,6 +3312,41 @@
           if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
           if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
           return Math.floor(diff / 86400) + '天前';
+        },
+        rankingNumberStyle(feed, item) {
+          if (!feed.rankingMode || !item.fetchTime) return {};
+          
+          const now = new Date();
+          const hours24 = 24 * 60 * 60 * 1000;
+          
+          // 找到所有条目中最远的抓取时间（cap at 24h）
+          let maxAge = 0;
+          for (const it of feed.items) {
+            if (it.fetchTime) {
+              const age = now - new Date(it.fetchTime);
+              const cappedAge = Math.min(age, hours24);
+              maxAge = Math.max(maxAge, cappedAge);
+            }
+          }
+          
+          if (maxAge === 0) return {}; // 没有有效的fetchTime
+          
+          // 当前条目的age
+          const age = now - new Date(item.fetchTime);
+          
+          // 超过24小时的显示默认灰色
+          if (age >= hours24) return {};
+          
+          // 相对于maxAge计算ratio
+          // maxAge的条目：ratio=0（灰色）
+          // age=0的条目：ratio=maxAge/24h（最绿的浓度取决于maxAge）
+          const ratio = (maxAge - age) / hours24;
+          
+          // 淡雅绿色: rgb(220, 245, 220) 到默认灰 rgb(232, 232, 232)
+          const r = Math.round(232 - (232 - 220) * ratio);
+          const g = Math.round(232 + (245 - 232) * ratio);
+          const b = Math.round(232 - (232 - 220) * ratio);
+          return { backgroundColor: `rgb(${r}, ${g}, ${b})` };
         },
         updateCountdown() {
           if (this.countdown < 0) return;
@@ -3556,17 +3598,17 @@
               if (!this.config.sources) this.config.sources = [];
               // 给每个源添加唯一 ID
               this.config.sources.forEach(s => {
-                s._id = Date.now() + Math.random();
+                s._id = this.generateId('src');
               });
 
               // 确保 folders 已初始化
               if (!this.config.folders) this.config.folders = [];
               // 给每个文件夹及其条目添加唯一 ID
               this.config.folders.forEach(f => {
-                if (!f.id) f.id = 'folder_' + Date.now() + Math.random();
+                if (!f.id) f.id = this.generateId('folder');
                 if (!f.entries) f.entries = [];
                 f.entries.forEach(e => {
-                  e._id = Date.now() + Math.random();
+                  e._id = this.generateId('tmpe');
                 });
               });
 
@@ -3574,10 +3616,10 @@
               if (!this.config.layoutGroups) this.config.layoutGroups = [];
               // 给每个分组及其布局项添加唯一 ID
               this.config.layoutGroups.forEach(g => {
-                if (!g.id) g.id = 'group_' + Date.now() + Math.random();
+                if (!g.id) g.id = this.generateId('group');
                 if (!g.items) g.items = [];
                 g.items.forEach(item => {
-                  item._id = Date.now() + Math.random();
+                  item._id = this.generateId('tmpi');
                 });
               });
 
@@ -3733,7 +3775,7 @@
         // === 订阅源管理 ===
         addSource() {
           this.config.sources.unshift({
-            _id: Date.now() + Math.random(),
+            _id: this.generateId('src'),
             name: '新建源',
             url: 'http://',
             editMode: true
@@ -3757,7 +3799,7 @@
         // === 文件夹管理 ===
         addFolder() {
           this.config.folders.unshift({
-            id: 'folder_' + Date.now(),
+            id: this.generateId('folder'),
             name: '新建文件夹',
             entries: [],
             editMode: true
@@ -3777,7 +3819,7 @@
           if (!folder.entries) folder.entries = [];
           // 给每个条目添加 _id
           folder.entries.forEach(e => {
-            if (!e._id) e._id = Date.now() + Math.random();
+            if (!e._id) e._id = this.generateId('tmpe');
             // 兼容性处理：初始化 categories
             if (!e.categories) {
               e.categories = [];
@@ -3789,7 +3831,7 @@
         addFolderEntry() {
           if (!this.currentFolder.entries) this.currentFolder.entries = [];
           this.currentFolder.entries.push({
-            _id: Date.now() + Math.random(),
+            _id: this.generateId('tmpe'),
             sourceUrl: '',
             categories: []
           });
@@ -3841,7 +3883,7 @@
 
           // 添加分类包条目
           this.currentFolder.entries.push({
-            _id: Date.now() + Math.random(),
+            _id: this.generateId('tmpp'),
             categoryPackageId: packageId,
             categories: []
           });
@@ -3883,7 +3925,7 @@
         // === 分组布局管理 ===
         addLayoutGroup() {
           this.config.layoutGroups.push({
-            id: 'group_' + Date.now(),
+            id: this.generateId('group'),
             name: '新分组',
             items: [],
             editMode: true
@@ -3903,7 +3945,7 @@
           if (!group.items) group.items = [];
           // 给每个条目添加 _id
           group.items.forEach(e => {
-            if (!e._id) e._id = Date.now() + Math.random();
+            if (!e._id) e._id = this.generateId('tmpi');
           });
           this.currentLayoutGroup = group;
           this.showLayoutItemsModal = true;
@@ -3911,7 +3953,7 @@
         addLayoutItem(type) {
           if (!this.currentLayoutGroup.items) this.currentLayoutGroup.items = [];
           this.currentLayoutGroup.items.push({
-            _id: Date.now() + Math.random(),
+            _id: this.generateId('tmpi'),
             type: type,
             sourceUrl: type === 'source' ? '' : undefined,
             folderId: type === 'folder' ? '' : undefined
@@ -3943,6 +3985,8 @@
           if (row.refreshCount === undefined) row.refreshCount = 0;
           if (row.showPubDate === undefined) row.showPubDate = false;
           if (row.showCategory === undefined) row.showCategory = false;
+          if (row.ignoreOriginalPubDate === undefined) row.ignoreOriginalPubDate = false;
+          if (row.rankingMode === undefined) row.rankingMode = false;
 
           // Init temp vars from row
           if (!row.classify) {
@@ -3999,6 +4043,18 @@
 
           this.showFeedSettingsModal = true;
         },
+        onIgnoreOriginalPubDateChange(val) {
+          // 强制增量模式与榜单模式互斥
+          if (val && this.currentEditingFeed.rankingMode) {
+            this.currentEditingFeed.rankingMode = false;
+          }
+        },
+        onRankingModeChange(val) {
+          // 榜单模式与强制增量模式互斥
+          if (val && this.currentEditingFeed.ignoreOriginalPubDate) {
+            this.currentEditingFeed.ignoreOriginalPubDate = false;
+          }
+        },
         saveFeedSettings() {
           if (!this.currentEditingFeed) return;
 
@@ -4019,6 +4075,14 @@
           // Handle showCategory
           if (!this.currentEditingFeed.showCategory) {
             this.currentEditingFeed.showCategory = undefined;
+          }
+          // Handle ignoreOriginalPubDate
+          if (!this.currentEditingFeed.ignoreOriginalPubDate) {
+            this.currentEditingFeed.ignoreOriginalPubDate = undefined;
+          }
+          // Handle rankingMode
+          if (!this.currentEditingFeed.rankingMode) {
+            this.currentEditingFeed.rankingMode = undefined;
           }
 
           // Construct classify object
@@ -4272,7 +4336,7 @@
             this.config.aiClassify.categoryPackages = [];
           }
           this.config.aiClassify.categoryPackages.push({
-            id: 'pkg_' + Date.now(),
+            id: this.generateId('pkg'),
             name: '新分类包',
             categories: []
           });
@@ -4286,7 +4350,7 @@
             pkg.categories = [];
           }
           pkg.categories.push({
-            id: 'cat_' + Date.now(),
+            id: this.generateId('cat'),
             name: '新类别',
             description: '',
             color: '#409EFF'
@@ -4449,7 +4513,7 @@
                 // Add to folder
                 if (!folder.entries) folder.entries = [];
                 folder.entries.push({
-                  _id: Date.now() + Math.random(),
+                  _id: this.generateId('tmpe'),
                   sourceUrl: source.url,
                   category: ''
                 });
@@ -4485,7 +4549,7 @@
             if (!this.config.layoutGroups.some(g => g.name === name) && name !== '关注') {
               // Create new layout group
               this.config.layoutGroups.push({
-                id: 'group_' + Date.now() + Math.random(),
+                id: this.generateId('group'),
                 name: name,
                 items: []
               });
@@ -4503,7 +4567,7 @@
               if (itemIndex === -1) {
                 if (!group.items) group.items = [];
                 group.items.push({
-                  _id: Date.now() + Math.random(),
+                  _id: this.generateId('tmpi'),
                   type: 'source',
                   sourceUrl: source.url
                 });
@@ -4549,7 +4613,7 @@
           newGroupNames.forEach(name => {
             if (!this.config.layoutGroups.some(g => g.name === name) && name !== '关注') {
               this.config.layoutGroups.push({
-                id: 'group_' + Date.now() + Math.random(),
+                id: this.generateId('group'),
                 name: name,
                 items: []
               });
@@ -4567,7 +4631,7 @@
               if (itemIndex === -1) {
                 if (!group.items) group.items = [];
                 group.items.push({
-                  _id: Date.now() + Math.random(),
+                  _id: this.generateId('tmpi'),
                   type: 'folder',
                   folderId: folder.id
                 });

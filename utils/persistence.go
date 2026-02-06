@@ -176,6 +176,7 @@ func loadItemsCache() {
 				Link:         entry.Link,
 				OriginalLink: entry.OriginalLink,
 				PubDate:      entry.PubDate,
+				FetchTime:    entry.FetchTime,
 			}
 			// 从分类缓存中恢复类别，这对于文件夹过滤功能至关重要
 			globals.ClassifyCacheLock.RLock()
@@ -325,6 +326,7 @@ func saveItemsCache() {
 				Link:         item.Link,
 				OriginalLink: item.OriginalLink,
 				PubDate:      item.PubDate,
+				FetchTime:    item.FetchTime,
 			}
 		}
 		if err := DBSaveItemsCache(rssURL, entries); err != nil {
@@ -357,6 +359,7 @@ func SetItemsCache(rssURL string, items []models.Item) {
 				Link:         item.Link,
 				OriginalLink: item.OriginalLink,
 				PubDate:      item.PubDate,
+				FetchTime:    item.FetchTime,
 			}
 		}
 		if err := DBSaveItemsCache(rssURL, entries); err != nil {

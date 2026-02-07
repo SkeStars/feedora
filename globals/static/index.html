@@ -120,6 +120,14 @@
           }
         }
 
+        :root {
+          --item-number-stage1: #e8e8e8;
+          --item-number-stage2: #eeeeee;
+          --item-number-stage3: #f3f3f3;
+          --item-number-stage4: #f6f6f6;
+          --item-number-border: rgba(120, 120, 120, 0.35);
+        }
+
         .item-number {
           width: 20px;
           height: 20px;
@@ -128,7 +136,7 @@
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          background-color: #e8e8e8;
+          background-color: var(--item-number-stage1);
           border-radius: 6px;
           color: #666;
           line-height: 1;
@@ -136,8 +144,17 @@
           padding-top: 2px;
         }
 
-        << if .DarkMode>>.item-number {
-          background-color: #3a3a3a;
+        << if .DarkMode>>
+        :root {
+          --item-number-stage1: #3a3a3a;
+          --item-number-stage2: #343434;
+          --item-number-stage3: #2f2f2f;
+          --item-number-stage4: #2a2a2a;
+          --item-number-border: rgba(200, 200, 200, 0.25);
+        }
+
+        .item-number {
+          background-color: var(--item-number-stage1);
           color: #999;
         }
 
@@ -271,15 +288,26 @@
         }
 
         .item-read {
-          opacity: 0.5;
+          opacity: 1;
         }
 
+        .item-read .item-number {
+          color: #aaa;
+        }
+
+        .item-read .item-content,
         .item-read a,
         .item-read .el-link {
           color: #999 !important;
         }
 
-        << if .DarkMode>>.item-read a,
+        << if .DarkMode>>
+        .item-read .item-number {
+          color: #777;
+        }
+
+        .item-read .item-content,
+        .item-read a,
         .item-read .el-link {
           color: #666 !important;
         }
@@ -455,6 +483,39 @@
           min-width: 0;
         }
 
+        .category-package-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .category-package-header-left {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+          flex: 1 1 220px;
+          min-width: 0;
+        }
+
+        .category-package-header-left .category-package-name-input {
+          width: min(250px, 100%);
+        }
+
+        .category-package-header .el-button {
+          flex-shrink: 0;
+        }
+
+        .category-package-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+          justify-content: center;
+          width: 100%;
+        }
+
         .mobile-category-delete-btn {
           position: absolute;
           right: 4px;
@@ -475,6 +536,16 @@
         .mobile-category-delete-btn:hover {
           color: #F56C6C;
           background: rgba(245, 108, 108, 0.1);
+        }
+
+        @media only screen and (max-width: 767px) {
+          .category-package-header {
+            align-items: flex-start;
+          }
+
+          .category-package-header-left {
+            flex: 1 1 100%;
+          }
         }
 
         /* 选择全选按钮分隔线 */
@@ -1746,7 +1817,8 @@
         <el-tabs v-model="activeTab">
           <!-- Sources Tab - 订阅源配置 -->
           <el-tab-pane label="订阅源配置" name="sources">
-            <div style="margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+            <div
+              style="margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; align-items: center;">
               <el-button type="primary" @click="addSource">
                 <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
                   style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;">
@@ -1754,11 +1826,17 @@
                 </svg>
                 添加订阅源
               </el-button>
+              <el-select v-model="sourceFolderFilter" size="small" placeholder="筛选文件夹"
+                style="min-width: 180px;">
+                <el-option label="全部订阅源" value="all"></el-option>
+                <el-option label="未归档" value="none"></el-option>
+                <el-option v-for="f in config.folders" :key="f.id" :label="f.name" :value="f.id"></el-option>
+              </el-select>
             </div>
 
             <!-- PC View -->
             <div v-if="isPc" style="max-width: 1100px; margin: 0 auto;">
-              <el-table ref="sourcesTable" class="sources-table" :data="config.sources" style="width: 100%"
+              <el-table ref="sourcesTable" class="sources-table" :data="filteredConfigSources" style="width: 100%"
                 row-key="_id" border>
                 <el-table-column width="40" type="index" align="center"></el-table-column>
                 <el-table-column prop="name" label="名称" width="130">
@@ -1805,7 +1883,7 @@
                         @click="openFeedSettings(scope.row)">设置</el-button>
 
                       <el-button type="danger" size="small" plain class="op-btn"
-                        @click="removeSource(scope.$index)">删除</el-button>
+                        @click="removeSource(scope.row)">删除</el-button>
                     </div>
                   </template>
                 </el-table-column>
@@ -1814,10 +1892,10 @@
 
             <!-- Mobile View -->
             <div v-else class="mobile-feed-list sources-list">
-              <div v-for="(item, index) in config.sources" :key="item._id" class="mobile-feed-card"
+              <div v-for="(item, index) in filteredConfigSources" :key="item._id" class="mobile-feed-card"
                 style="position: relative;">
 
-                <el-button type="text" size="medium" class="mobile-delete-btn" @click="removeSource(index)"
+                <el-button type="text" size="medium" class="mobile-delete-btn" @click="removeSource(item)"
                   style="position: absolute; right: 2px; top: 8px; z-index: 10; width: 32px; height: 32px; min-height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; color: #909399;">
                   <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
                     fill="currentColor">
@@ -2253,20 +2331,12 @@
                   <!-- Package Management -->
                   <div v-for="(pkg, pkgIndex) in (config.aiClassify.categoryPackages || [])" :key="pkg.id"
                     style="margin-bottom: 20px; border: 1px solid #ebeef5; padding: 15px; border-radius: 8px;">
-                    <div
-                      style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                      <div style="display: flex; gap: 10px; align-items: center;">
+                    <div class="category-package-header" style="margin-bottom: 15px;">
+                      <div class="category-package-header-left">
                         <el-tag size="medium" effect="dark">分类包</el-tag>
-                        <el-input v-model="pkg.name" size="small" style="width: 250px;" placeholder="包名称"></el-input>
+                        <el-input v-model="pkg.name" size="small" class="category-package-name-input"
+                          placeholder="包名称"></el-input>
                       </div>
-                      <el-button type="danger" size="mini" circle @click="removePackage(pkgIndex)">
-                        <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="12" height="12"
-                          fill="currentColor">
-                          <path
-                            d="M160 256h704a32 32 0 0 1 0 64H160a32 32 0 0 1 0-64z m96 96h512a32 32 0 0 1 32 32v512a32 32 0 0 1-32 32H256a32 32 0 0 1-32-32V384a32 32 0 0 1 32-32z m96 96v384a32 32 0 0 0 64 0V448a32 32 0 0 0-64 0z m192 0v384a32 32 0 0 0 64 0V448a32 32 0 0 0-64 0zM352 160h320a32 32 0 0 1 0 64H352a32 32 0 0 1 0-64z">
-                          </path>
-                        </svg>
-                      </el-button>
                     </div>
 
                     <el-table v-if="isPc" :data="pkg.categories" border size="small" style="width: 100%;">
@@ -2336,9 +2406,10 @@
                         </div>
                       </div>
                     </div>
-                    <div style="margin-top: 10px;">
+                    <div style="margin-top: 10px; width: 100%;" class="category-package-actions">
                       <el-button type="primary" plain size="mini" @click="addCategoryToPackage(pkg)">+
                         添加类别到此包</el-button>
+                      <el-button type="danger" plain size="mini" @click="removePackage(pkgIndex)">删除分类包</el-button>
                     </div>
                   </div>
 
@@ -3141,7 +3212,9 @@
               categoryPackages: []
             }
           },
+          configLoaded: false,
           activeTab: 'sources',
+          sourceFolderFilter: 'all',
           nightStartTime: '',
           nightEndTime: '',
           currentFolder: null,
@@ -3188,6 +3261,17 @@
             const group = feed.group || '关注';
             return group === this.currentGroup;
           });
+        },
+        filteredConfigSources() {
+          if (!this.config || !this.config.sources) return [];
+          const filter = this.sourceFolderFilter || 'all';
+          if (filter === 'all') return this.config.sources;
+          if (filter === 'none') {
+            return this.config.sources.filter(src => this.getFoldersForSource(src.url).length === 0);
+          }
+          const hasFolder = this.config.folders && this.config.folders.some(f => f.id === filter);
+          if (!hasFolder) return this.config.sources;
+          return this.config.sources.filter(src => this.getFoldersForSource(src.url).includes(filter));
         },
         // 获取所有启用了AI分类的源（用于文件夹绑定子源选择）
         allAiEnabledSources() {
@@ -3269,6 +3353,8 @@
 
             if (feedsRes.ok) {
               this.feeds = await feedsRes.json();
+              this.applyFeedDisplayOverrides(this.feeds);
+              this.updateGroupsFromFeeds();
             }
 
             if (nextUpdateRes.ok) {
@@ -3297,6 +3383,7 @@
         },
         togglePubDate(feed) {
           feed.showPubDate = !feed.showPubDate;
+          this.persistFeedDisplaySetting(feed, 'showPubDate', feed.showPubDate);
         },
         toggleCategoryTags(feed) {
           feed.showCategory = !feed.showCategory;
@@ -3304,14 +3391,112 @@
         toggleSourceTags(feed) {
           feed.showSource = !feed.showSource;
         },
+        loadFeedDisplayOverrides() {
+          try {
+            const raw = localStorage.getItem('rss_feed_display_overrides');
+            if (!raw) return {};
+            const parsed = JSON.parse(raw);
+            return parsed && typeof parsed === 'object' ? parsed : {};
+          } catch (e) {
+            return {};
+          }
+        },
+        saveFeedDisplayOverrides(overrides) {
+          try {
+            localStorage.setItem('rss_feed_display_overrides', JSON.stringify(overrides));
+          } catch (e) { }
+        },
+        applyFeedDisplayOverrideToFeed(feed) {
+          if (!feed || !feed.link) return;
+          const overrides = this.loadFeedDisplayOverrides();
+          const entry = overrides[feed.link];
+          if (entry && typeof entry.showPubDate === 'boolean') {
+            feed.showPubDate = entry.showPubDate;
+          }
+        },
+        applyFeedDisplayOverrides(feeds) {
+          if (!Array.isArray(feeds)) return;
+          const overrides = this.loadFeedDisplayOverrides();
+          feeds.forEach(feed => {
+            if (!feed || !feed.link) return;
+            const entry = overrides[feed.link];
+            if (entry && typeof entry.showPubDate === 'boolean') {
+              feed.showPubDate = entry.showPubDate;
+            }
+          });
+        },
+        persistFeedDisplaySetting(feed, key, value) {
+          if (!feed || !feed.link) return;
+          const overrides = this.loadFeedDisplayOverrides();
+          if (!overrides[feed.link]) overrides[feed.link] = {};
+          overrides[feed.link][key] = value;
+          this.saveFeedDisplayOverrides(overrides);
+
+          // 若已加载配置，则同步到配置并保存
+          if (this.configLoaded && this.config && (this.config.sources || this.config.folders)) {
+            let updated = false;
+            if (feed.isFolder) {
+              const folderId = feed.link.startsWith('folder:') ? feed.link.slice(7) : '';
+              if (folderId && this.config.folders) {
+                const folder = this.config.folders.find(f => f.id === folderId);
+                if (folder) {
+                  folder[key] = value;
+                  updated = true;
+                }
+              }
+            } else if (this.config.sources) {
+              const source = this.config.sources.find(s => s.url === feed.link);
+              if (source) {
+                source[key] = value;
+                updated = true;
+              }
+            }
+
+            if (updated) {
+              this.saveConfig({ closeModal: false, showMessage: false });
+            }
+          }
+        },
         selectGroup(group) {
           this.currentGroup = group;
+          try {
+            localStorage.setItem('rss_current_group', group);
+          } catch (e) { }
           this.$nextTick(() => {
             const activeTab = document.querySelector('.group-tab.active');
             if (activeTab) {
               activeTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
             }
           });
+        },
+        restoreCurrentGroup() {
+          try {
+            const saved = localStorage.getItem('rss_current_group');
+            if (saved) this.currentGroup = saved;
+          } catch (e) { }
+          this.ensureCurrentGroup();
+        },
+        ensureCurrentGroup() {
+          if (!this.groups || this.groups.length === 0) {
+            this.currentGroup = '关注';
+            return;
+          }
+          if (!this.groups.includes(this.currentGroup)) {
+            this.currentGroup = this.groups[0];
+          }
+          try {
+            localStorage.setItem('rss_current_group', this.currentGroup);
+          } catch (e) { }
+        },
+        updateGroupsFromFeeds() {
+          if (!this.feeds || this.feeds.length === 0) return;
+          const groupSet = new Set();
+          this.feeds.forEach(feed => {
+            const group = feed.group || '关注';
+            groupSet.add(group);
+          });
+          this.groups = Array.from(groupSet);
+          this.ensureCurrentGroup();
         },
         timeAgo(dateStr) {
           if (!dateStr) return '';
@@ -3346,39 +3531,115 @@
           return Math.floor(diff / 86400) + '天前';
         },
         rankingNumberStyle(feed, item) {
-          if (!feed.rankingMode || !item.fetchTime) return {};
-          
+          if (!feed || !item) return {};
+
+          if (!feed.rankingMode) {
+            if (!item.pubDate) return {};
+            const pubDate = new Date(item.pubDate);
+            if (isNaN(pubDate.getTime())) return {};
+
+            const now = Date.now();
+            const age = Math.max(0, now - pubDate.getTime());
+            const hour = 60 * 60 * 1000;
+            const day = 24 * hour;
+
+            if (age < 15 * hour) {
+              return {
+                backgroundColor: 'var(--item-number-stage2)',
+                fontWeight: '600'
+              };
+            }
+            if (age < 24 * hour) {
+              return {
+                backgroundColor: 'var(--item-number-stage2)'
+              };
+            }
+            if (age < 5 * day) return { backgroundColor: 'var(--item-number-stage3)' };
+            return { backgroundColor: 'var(--item-number-stage4)' };
+          }
+
+          if (!item.fetchTime) return {};
+
           const now = new Date();
           const hours24 = 24 * 60 * 60 * 1000;
-          
+
           // 找到所有条目中最远的抓取时间（cap at 24h）
           let maxAge = 0;
           for (const it of feed.items) {
             if (it.fetchTime) {
-              const age = now - new Date(it.fetchTime);
+              const itTime = new Date(it.fetchTime);
+              if (isNaN(itTime.getTime())) continue;
+              const age = now - itTime;
               const cappedAge = Math.min(age, hours24);
               maxAge = Math.max(maxAge, cappedAge);
             }
           }
-          
+
           if (maxAge === 0) return {}; // 没有有效的fetchTime
-          
+
           // 当前条目的age
-          const age = now - new Date(item.fetchTime);
-          
+          const itemTime = new Date(item.fetchTime);
+          if (isNaN(itemTime.getTime())) return {};
+          const age = now - itemTime;
+
           // 超过24小时的显示默认灰色
-          if (age >= hours24) return {};
-          
+          if (age >= hours24) return { backgroundColor: 'var(--item-number-stage4)' };
+
           // 相对于maxAge计算ratio
           // maxAge的条目：ratio=0（灰色）
           // age=0的条目：ratio=maxAge/24h（最绿的浓度取决于maxAge）
           const ratio = (maxAge - age) / hours24;
-          
-          // 淡雅绿色: rgb(220, 245, 220) 到默认灰 rgb(232, 232, 232)
-          const r = Math.round(232 - (232 - 220) * ratio);
-          const g = Math.round(232 + (245 - 232) * ratio);
-          const b = Math.round(232 - (232 - 220) * ratio);
-          return { backgroundColor: `rgb(${r}, ${g}, ${b})` };
+
+          const t = Math.min(1, Math.max(0, ratio));
+          const stage4 = this.getCssColorVar('--item-number-stage4', '#f6f6f6');
+          const stage1 = this.getCssColorVar('--item-number-stage1', '#e8e8e8');
+          return { backgroundColor: this.mixColors(stage4, stage1, t) };
+        },
+        getCssColorVar(name, fallback) {
+          try {
+            const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+            return val || fallback;
+          } catch (e) {
+            return fallback;
+          }
+        },
+        parseColorToRgb(color) {
+          if (!color) return null;
+          const c = color.trim();
+          if (c.startsWith('#')) {
+            const hex = c.slice(1);
+            if (hex.length === 3) {
+              const r = parseInt(hex[0] + hex[0], 16);
+              const g = parseInt(hex[1] + hex[1], 16);
+              const b = parseInt(hex[2] + hex[2], 16);
+              return { r, g, b };
+            }
+            if (hex.length === 6) {
+              const r = parseInt(hex.slice(0, 2), 16);
+              const g = parseInt(hex.slice(2, 4), 16);
+              const b = parseInt(hex.slice(4, 6), 16);
+              return { r, g, b };
+            }
+          }
+          if (c.startsWith('rgb')) {
+            const nums = c.match(/[\d.]+/g);
+            if (nums && nums.length >= 3) {
+              return {
+                r: Math.round(parseFloat(nums[0])),
+                g: Math.round(parseFloat(nums[1])),
+                b: Math.round(parseFloat(nums[2]))
+              };
+            }
+          }
+          return null;
+        },
+        mixColors(colorA, colorB, t) {
+          const a = this.parseColorToRgb(colorA) || { r: 246, g: 246, b: 246 };
+          const b = this.parseColorToRgb(colorB) || { r: 232, g: 232, b: 232 };
+          const r = Math.round(a.r + (b.r - a.r) * t);
+          const g = Math.round(a.g + (b.g - a.g) * t);
+          const b2 = Math.round(a.b + (b.b - a.b) * t);
+          return `rgb(${r}, ${g}, ${b2})`;
         },
         updateCountdown() {
           if (this.countdown < 0) return;
@@ -3451,6 +3712,8 @@
                 if (updatedFeed) {
                   // 更新对象属性
                   Object.assign(feed, updatedFeed);
+                  this.applyFeedDisplayOverrideToFeed(feed);
+                  this.updateGroupsFromFeeds();
                   this.$message.success('刷新成功');
                 } else {
                   this.$message.warning('已刷新，但未能在列表中找到该源');
@@ -3495,8 +3758,10 @@
                 const existingFeed = this.feeds.find(f => f.link === newFeed.link);
                 if (existingFeed) {
                   Object.assign(existingFeed, newFeed);
+                  this.applyFeedDisplayOverrideToFeed(existingFeed);
                 }
               });
+              this.updateGroupsFromFeeds();
               this.$message.success('全部刷新成功');
               // 重置倒计时
               this.countdown = this.refreshInterval * 60;
@@ -3625,6 +3890,7 @@
             });
             if (res.ok) {
               this.config = await res.json();
+              this.configLoaded = true;
 
               // 确保 sources 已初始化
               if (!this.config.sources) this.config.sources = [];
@@ -3777,7 +4043,11 @@
             this.$message.error('网络错误');
           }
         },
-        async saveConfig() {
+        async saveConfig(options = {}) {
+          const {
+            closeModal = true,
+            showMessage = true
+          } = options;
           try {
             // 更新时间设置
             this.config.nightStartTime = this.nightStartTime;
@@ -3794,14 +4064,16 @@
             });
 
             if (res.ok) {
-              this.$message.success('保存成功，即将刷新页面');
-              this.showConfigModal = false;
-              setTimeout(() => location.reload(), 1000);
+              if (showMessage) this.$message.success('保存成功');
+              if (closeModal) this.showConfigModal = false;
+              return true;
             } else {
-              this.$message.error('保存失败');
+              if (showMessage) this.$message.error('保存失败');
+              return false;
             }
           } catch (e) {
-            this.$message.error('保存出错');
+            if (showMessage) this.$message.error('保存出错');
+            return false;
           }
         },
         // === 订阅源管理 ===
@@ -3813,13 +4085,37 @@
             editMode: true
           });
         },
-        removeSource(index) {
+        removeSource(target) {
+          const index = typeof target === 'number'
+            ? target
+            : this.config.sources.findIndex(s => (target && (s._id === target._id || s.url === target.url)));
+          if (index < 0) return;
           this.$confirm('确定删除该订阅源吗?', '提示', {
             confirmButtonText: '确定',
             cancelButtonText: '取消',
             type: 'warning'
           }).then(() => {
-            this.config.sources.splice(index, 1);
+            const removed = this.config.sources.splice(index, 1)[0];
+            const url = removed ? removed.url : '';
+            if (!url) return;
+
+            // 清理文件夹中引用该源的条目
+            if (this.config.folders) {
+              this.config.folders.forEach(folder => {
+                if (folder.entries) {
+                  folder.entries = folder.entries.filter(e => e.sourceUrl !== url);
+                }
+              });
+            }
+
+            // 清理分组布局中引用该源的条目
+            if (this.config.layoutGroups) {
+              this.config.layoutGroups.forEach(group => {
+                if (group.items) {
+                  group.items = group.items.filter(item => !(item.type === 'source' && item.sourceUrl === url));
+                }
+              });
+            }
           }).catch(() => { });
         },
         enableEdit(row) {
@@ -4087,7 +4383,8 @@
             this.currentEditingFeed.ignoreOriginalPubDate = false;
           }
         },
-        saveFeedSettings() {
+        saveFeedSettings(options = {}) {
+          const { closeModal = true } = options;
           if (!this.currentEditingFeed) return;
 
           // Handle maxItems and cacheItems
@@ -4228,11 +4525,18 @@
             this.currentEditingFeed.postProcess = undefined;
           }
 
-          this.showFeedSettingsModal = false;
+          if (closeModal) this.showFeedSettingsModal = false;
         },
         async clearCacheAndRefresh(type) {
           if (!this.currentEditingFeed || !this.currentEditingFeed.url) {
-            this.$message.warning('请先保存设置后再重新处理');
+            this.$message.warning('请先选择需要处理的订阅源');
+            return;
+          }
+
+          this.saveFeedSettings({ closeModal: false });
+          const saved = await this.saveConfig({ closeModal: false, showMessage: false });
+          if (!saved) {
+            this.$message.error('保存失败，无法按新规则重新处理');
             return;
           }
 
@@ -4269,8 +4573,10 @@
                   const existingFeed = this.feeds.find(f => f.link === newFeed.link);
                   if (existingFeed) {
                     Object.assign(existingFeed, newFeed);
+                    this.applyFeedDisplayOverrideToFeed(existingFeed);
                   }
                 });
+                this.updateGroupsFromFeeds();
                 this.$message.success('刷新完成');
               }
             } else {
@@ -4764,6 +5070,11 @@
         this.updateCountdown();
         // 加载已读状态
         this.loadReadItems();
+        // 应用本地展示配置
+        this.applyFeedDisplayOverrides(this.feeds);
+        this.updateGroupsFromFeeds();
+        // 恢复本地分组选中状态
+        this.restoreCurrentGroup();
       },
       async mounted() {
         const loader = document.getElementById('initial-loader');
@@ -4779,6 +5090,8 @@
           const response = await fetch('/feeds');
           if (response.ok) {
             this.feeds = await response.json();
+            this.applyFeedDisplayOverrides(this.feeds);
+            this.updateGroupsFromFeeds();
             this.showSEOFlag = false;
           }
         } catch (e) {
@@ -4807,9 +5120,12 @@
             const existingFeed = this.feeds.find(f => f.link === feed.link);
             if (existingFeed) {
               Object.assign(existingFeed, feed);
+              this.applyFeedDisplayOverrideToFeed(existingFeed);
             } else {
+              this.applyFeedDisplayOverrideToFeed(feed);
               this.feeds.push(feed);
             }
+            this.updateGroupsFromFeeds();
             this.showSEOFlag = false;
           };
           const reloadHtml = () => {

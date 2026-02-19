@@ -3534,34 +3534,55 @@
           if (!feed || !item) return {};
 
           if (!feed.rankingMode) {
-            if (!item.pubDate) return {};
-            const pubDate = new Date(item.pubDate);
-            if (isNaN(pubDate.getTime())) return {};
-
-            const now = Date.now();
-            const age = Math.max(0, now - pubDate.getTime());
             const hour = 60 * 60 * 1000;
             const day = 24 * hour;
+            const now = Date.now();
+
+            // 是否加粗：24小时内发布 或 18小时内更新
+            let shouldBold = false;
+            if (item.pubDate) {
+              const pd = new Date(item.pubDate);
+              if (!isNaN(pd.getTime()) && (now - pd.getTime()) < 24 * hour) {
+                shouldBold = true;
+              }
+            }
+            if (!shouldBold && item.fetchTime) {
+              const ft = new Date(item.fetchTime);
+              if (!isNaN(ft.getTime()) && (now - ft.getTime()) < 18 * hour) {
+                shouldBold = true;
+              }
+            }
+            const boldStyle = shouldBold ? { fontWeight: '600' } : {};
+
+            if (!item.pubDate) return boldStyle;
+            const pubDate = new Date(item.pubDate);
+            if (isNaN(pubDate.getTime())) return boldStyle;
+
+            const age = Math.max(0, now - pubDate.getTime());
 
             if (age < 15 * hour) {
-              return {
-                backgroundColor: 'var(--item-number-stage2)',
-                fontWeight: '600'
-              };
+              return { backgroundColor: 'var(--item-number-stage2)', ...boldStyle };
             }
             if (age < 24 * hour) {
-              return {
-                backgroundColor: 'var(--item-number-stage2)'
-              };
+              return { backgroundColor: 'var(--item-number-stage2)', ...boldStyle };
             }
-            if (age < 5 * day) return { backgroundColor: 'var(--item-number-stage3)' };
-            return { backgroundColor: 'var(--item-number-stage4)' };
+            if (age < 5 * day) return { backgroundColor: 'var(--item-number-stage3)', ...boldStyle };
+            return { backgroundColor: 'var(--item-number-stage4)', ...boldStyle };
           }
 
           if (!item.fetchTime) return {};
 
           const now = new Date();
           const hours24 = 24 * 60 * 60 * 1000;
+          const hour = 60 * 60 * 1000;
+
+          // 当前条目的age（先算，用于加粗判断）
+          const itemTime = new Date(item.fetchTime);
+          if (isNaN(itemTime.getTime())) return {};
+          const age = now - itemTime;
+
+          // 是否加粗：6小时内更新
+          const boldStyle = age < 6 * hour ? { fontWeight: '600' } : {};
 
           // 找到所有条目中最远的抓取时间（cap at 24h）
           let maxAge = 0;
@@ -3569,21 +3590,16 @@
             if (it.fetchTime) {
               const itTime = new Date(it.fetchTime);
               if (isNaN(itTime.getTime())) continue;
-              const age = now - itTime;
-              const cappedAge = Math.min(age, hours24);
+              const itAge = now - itTime;
+              const cappedAge = Math.min(itAge, hours24);
               maxAge = Math.max(maxAge, cappedAge);
             }
           }
 
-          if (maxAge === 0) return {}; // 没有有效的fetchTime
-
-          // 当前条目的age
-          const itemTime = new Date(item.fetchTime);
-          if (isNaN(itemTime.getTime())) return {};
-          const age = now - itemTime;
+          if (maxAge === 0) return boldStyle; // 没有有效的fetchTime
 
           // 超过24小时的显示默认灰色
-          if (age >= hours24) return { backgroundColor: 'var(--item-number-stage4)' };
+          if (age >= hours24) return { backgroundColor: 'var(--item-number-stage4)', ...boldStyle };
 
           // 相对于maxAge计算ratio
           // maxAge的条目：ratio=0（灰色）
@@ -3593,7 +3609,7 @@
           const t = Math.min(1, Math.max(0, ratio));
           const stage4 = this.getCssColorVar('--item-number-stage4', '#f6f6f6');
           const stage1 = this.getCssColorVar('--item-number-stage1', '#e8e8e8');
-          return { backgroundColor: this.mixColors(stage4, stage1, t) };
+          return { backgroundColor: this.mixColors(stage4, stage1, t), ...boldStyle };
         },
         getCssColorVar(name, fallback) {
           try {

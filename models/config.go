@@ -364,6 +364,8 @@ type Config struct {
 	NightEndTime string `json:"nightEndTime,omitempty"`
 	// 是否启用夜间模式 (手动覆盖)
 	DarkMode bool `json:"darkMode,omitempty"`
+	// 新条目序号加粗高亮颜色
+	BoldColor string `json:"boldColor,omitempty"`
 	// Settings password
 	Password string `json:"password,omitempty"`
 	// Session duration in hours (default: 24)

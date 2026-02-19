@@ -2185,6 +2185,15 @@
                 <div class="tip">开启后将始终使用深色主题</div>
               </el-form-item>
 
+              <el-form-item label="新条目序号颜色">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <el-color-picker v-model="config.boldColor" show-alpha></el-color-picker>
+                  <el-input v-model="config.boldColor" placeholder="#c8874a" style="flex: 1;"></el-input>
+                  <el-button size="mini" @click="config.boldColor = '#c8874a'">重置</el-button>
+                </div>
+                <div class="tip">24小时内发布/18小时内更新（榜单模式：6小时内）的条目，其序号将使用此颜色加粗显示</div>
+              </el-form-item>
+
               <el-form-item label="自动夜间模式">
                 <div style="display: flex; align-items: center; gap: 10px;">
                   <el-time-picker v-model="nightStartTime" placeholder="开始时间" value-format="HH:mm:ss"
@@ -3552,7 +3561,8 @@
                 shouldBold = true;
               }
             }
-            const boldStyle = shouldBold ? { fontWeight: '600', color: '#c8874a' } : {};
+            const boldColor = (this.config && this.config.boldColor) || '#c8874a';
+            const boldStyle = shouldBold ? { fontWeight: '600', color: boldColor } : {};
 
             if (!item.pubDate) return boldStyle;
             const pubDate = new Date(item.pubDate);
@@ -3582,7 +3592,8 @@
           const age = now - itemTime;
 
           // 是否加粗：6小时内更新
-          const boldStyle = age < 6 * hour ? { fontWeight: '600', color: '#c8874a' } : {};
+          const boldColor = (this.config && this.config.boldColor) || '#c8874a';
+          const boldStyle = age < 6 * hour ? { fontWeight: '600', color: boldColor } : {};
 
           // 找到所有条目中最远的抓取时间（cap at 24h）
           let maxAge = 0;

@@ -3175,6 +3175,7 @@
   <script>
     window.__initialFeeds = << .RssDataList | json >>;
     window.__initialCategories = << .Categories | json >>;
+    window.__boldColor = << .BoldColor | json >>;
     const app = Vue.createApp({
       data() {
         return {
@@ -3561,7 +3562,7 @@
                 shouldBold = true;
               }
             }
-            const boldColor = (this.config && this.config.boldColor) || '#c8874a';
+            const boldColor = (this.config && this.config.boldColor) || window.__boldColor || '#c8874a';
             const boldStyle = shouldBold ? { fontWeight: '600', color: boldColor } : {};
 
             if (!item.pubDate) return boldStyle;
@@ -3592,7 +3593,7 @@
           const age = now - itemTime;
 
           // 是否加粗：6小时内更新
-          const boldColor = (this.config && this.config.boldColor) || '#c8874a';
+          const boldColor = (this.config && this.config.boldColor) || window.__boldColor || '#c8874a';
           const boldStyle = age < 6 * hour ? { fontWeight: '600', color: boldColor } : {};
 
           // 找到所有条目中最远的抓取时间（cap at 24h）

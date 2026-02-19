@@ -121,6 +121,7 @@ func tplHandler(w http.ResponseWriter, r *http.Request) {
 		DefaultGroup   string
 		NextUpdateTime string
 		Categories     []models.Category
+		BoldColor      string
 	}{
 		Keywords:       getKeywordsFromFeeds(allFeeds),
 		RssDataList:    allFeeds,
@@ -129,6 +130,7 @@ func tplHandler(w http.ResponseWriter, r *http.Request) {
 		DefaultGroup:   globals.RssUrls.GetDefaultGroupName(),
 		NextUpdateTime: nextUpdate.Format(time.RFC3339),
 		Categories:     globals.RssUrls.AIClassify.GetCategories(&globals.RssUrls),
+		BoldColor:      globals.RssUrls.BoldColor,
 	}
 
 	// 渲染模板并将结果写入响应

@@ -3552,7 +3552,7 @@
                 shouldBold = true;
               }
             }
-            const boldStyle = shouldBold ? { fontWeight: '600' } : {};
+            const boldStyle = shouldBold ? { fontWeight: '600', color: '#c8874a' } : {};
 
             if (!item.pubDate) return boldStyle;
             const pubDate = new Date(item.pubDate);
@@ -3582,7 +3582,7 @@
           const age = now - itemTime;
 
           // 是否加粗：6小时内更新
-          const boldStyle = age < 6 * hour ? { fontWeight: '600' } : {};
+          const boldStyle = age < 6 * hour ? { fontWeight: '600', color: '#c8874a' } : {};
 
           // 找到所有条目中最远的抓取时间（cap at 24h）
           let maxAge = 0;

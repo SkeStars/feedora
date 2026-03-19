@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"feedora/globals"
+	"feedora/models"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os/exec"
-	"feedora/globals"
-	"feedora/models"
 	"sort"
 	"strings"
 	"sync"
@@ -81,7 +80,7 @@ func PostProcessItems(items []models.Item, rssURL string) []models.Item {
 					index: job.index,
 					item:  job.item,
 				}
-				
+
 				// 获取原始链接作为缓存 key（优先使用 OriginalLink，如果没有则使用 Link）
 				originalLink := job.item.OriginalLink
 				if originalLink == "" {
@@ -111,7 +110,7 @@ func PostProcessItems(items []models.Item, rssURL string) []models.Item {
 					aiConfig := globals.RssUrls.AIClassify
 					maxRetries := aiConfig.GetRetryCount()
 					retryWait := time.Duration(aiConfig.GetRetryWait()) * time.Second
-					
+
 					var processedItem models.Item
 					var lastErr error
 
@@ -121,17 +120,17 @@ func PostProcessItems(items []models.Item, rssURL string) []models.Item {
 						} else {
 							processedItem, lastErr = processItemWithAI(job.item, config)
 						}
-						
+
 						if lastErr == nil {
 							break
 						}
-						
+
 						if attempt < maxRetries {
 							retryType := "失败"
 							if lastErr != nil && (strings.Contains(strings.ToLower(lastErr.Error()), "timeout") || strings.Contains(lastErr.Error(), "deadline exceeded")) {
 								retryType = "超时"
 							}
-							log.Printf("[后处理重试] 条目 [%s]: 第 %d/%d 次尝试%s: %v，%d秒后重试...", 
+							log.Printf("[后处理重试] 条目 [%s]: 第 %d/%d 次尝试%s: %v，%d秒后重试...",
 								job.item.Title, attempt, maxRetries-1, retryType, lastErr, int(retryWait.Seconds()))
 							time.Sleep(retryWait)
 						}
@@ -270,8 +269,14 @@ func processItemWithAI(item models.Item, config *models.PostProcessConfig) (mode
 	// 构建提示词
 	prompt := config.Prompt
 	if prompt == "" {
-		prompt = "请对以下RSS条目进行处理，返回JSON格式：{\"title\": \"处理后的标题\", \"link\": \"处理后的链接\", \"pubDate\": \"处理后的发布时间\"}"
+		prompt = "请对以下RSS条目进行处理。"
 	}
+	prompt += "\n\n输出要求（必须全部满足）：" +
+		"\n1. 只返回一个 JSON 对象，不要返回 markdown、代码块、解释或额外文本。" +
+		"\n2. 仅允许出现这三个字段：title、link、pubDate。" +
+		"\n3. 未修改的字段也要保留原值，不要留空，不要省略。" +
+		"\n4. `title`、`link`、`pubDate` 的值都必须是字符串。" +
+		"\n5. 输出格式必须是：{\"title\":\"...\",\"link\":\"...\",\"pubDate\":\"...\"}。"
 
 	// 构建条目内容
 	itemJSON, _ := json.Marshal(map[string]string{
@@ -291,53 +296,15 @@ func processItemWithAI(item models.Item, config *models.PostProcessConfig) (mode
 		MaxTokens:   aiConfig.GetMaxTokens(),
 	}
 
-	// 某些 API (如 OpenAI, Ark) 要求开启 json_object 时，提示词中必须包含 "json" 字样
-	if strings.Contains(strings.ToLower(prompt), "json") || strings.Contains(strings.ToLower(string(itemJSON)), "json") {
-		reqBody.ResponseFormat = &ResponseFormat{
-			Type: "json_object",
-		}
-	}
+	jsonMode := aiConfig.GetJSONMode()
+	maybeEnableJSONObjectResponseFormat(&reqBody, jsonMode, prompt, string(itemJSON))
 
-	jsonData, err := json.Marshal(reqBody)
-	if err != nil {
-		return item, fmt.Errorf("序列化请求失败: %w", err)
-	}
-
-	// 发送请求
 	client := &http.Client{
 		Timeout: time.Duration(aiConfig.GetTimeout()) * time.Second,
 	}
-	apiURL := fmt.Sprintf("%s/chat/completions", strings.TrimSuffix(aiConfig.GetAPIBase(), "/"))
-	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
+	chatResp, err := sendChatCompletion(client, aiConfig.GetAPIBase(), aiConfig.APIKey, jsonMode, reqBody)
 	if err != nil {
-		return item, fmt.Errorf("创建请求失败: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", aiConfig.APIKey))
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return item, fmt.Errorf("发送请求失败: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return item, fmt.Errorf("读取响应失败: %w", err)
-	}
-
-	var chatResp ChatResponse
-	if err := json.Unmarshal(body, &chatResp); err != nil {
-		return item, fmt.Errorf("解析响应失败: %w", err)
-	}
-
-	if chatResp.Error != nil {
-		return item, fmt.Errorf("API错误: %s", chatResp.Error.Message)
-	}
-
-	if len(chatResp.Choices) == 0 {
-		return item, fmt.Errorf("API未返回有效响应")
+		return item, err
 	}
 
 	// 解析后处理结果

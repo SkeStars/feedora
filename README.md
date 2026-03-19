@@ -388,6 +388,7 @@ AI分类配置示例：
     "apiKey": "your-api-key-here",
     "apiBase": "https://ark.cn-beijing.volces.com/api/v3",
     "model": "doubao-seed-1.8",
+    "jsonMode": "auto",
     "systemPrompt": "你是一个内容分类助手，根据给定的类别对RSS文章进行分类。",
     "maxTokens": 500,
     "temperature": 0.1,
@@ -418,6 +419,7 @@ AI分类配置示例：
 | `apiKey` | API 密钥 | - |
 | `apiBase` | API 端点（兼容 OpenAI 格式） | 火山引擎 |
 | `model` | 模型名称 | `doubao-seed-1.8` |
+| `jsonMode` | JSON 输出模式：`auto` / `json_object` / `prompt_only` | `auto` |
 | `systemPrompt` | 系统提示词 | - |
 | `maxTokens` | 最大 token 数 | `500` |
 | `temperature` | 温度参数 | `0.1` |
@@ -425,6 +427,11 @@ AI分类配置示例：
 | `concurrency` | 并发请求数 | `5` |
 | `maxDescLength` | 发送给AI的描述最大长度 | `2000` |
 | `categoryPackages` | 分类类别包列表 | `[]` |
+
+`jsonMode` 说明：
+- `auto`：按原逻辑发送 `response_format=json_object`，若模型拒绝则自动降级重试一次。
+- `json_object`：强制发送 `response_format=json_object`，适用于明确支持该能力的模型。
+- `prompt_only`：仅依赖提示词约束 JSON 输出，不发送 `response_format`。`doubao-seed-2-0-lite` 建议使用这个模式。
 
 **支持的 AI 平台：**
 - OpenAI

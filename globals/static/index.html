@@ -2282,6 +2282,14 @@
                 <el-form-item label="模型">
                   <el-input v-model="config.aiClassify.model" placeholder="默认: doubao-seed-1.8"></el-input>
                 </el-form-item>
+                <el-form-item label="JSON 输出模式">
+                  <el-select v-model="config.aiClassify.jsonMode" placeholder="默认: 自动" style="width: 100%;">
+                    <el-option label="自动" value="auto"></el-option>
+                    <el-option label="强制 json_object" value="json_object"></el-option>
+                    <el-option label="仅提示词约束" value="prompt_only"></el-option>
+                  </el-select>
+                  <div class="tip">`auto` 会在 `json_object` 被模型拒绝时自动降级重试；`prompt_only` 不发送 `response_format`，适合 `doubao-seed-2-0-lite` 这类模型。</div>
+                </el-form-item>
                 <el-form-item label="系统提示词">
                   <el-input type="textarea" :rows="4" v-model="config.aiClassify.systemPrompt"
                     placeholder="默认: 根据类别列表对文章进行分类"></el-input>
@@ -2736,6 +2744,24 @@
               <el-switch v-model="currentEditingFolder.showSource"></el-switch>
               <div class="tip">在聚合卡片内显示源名称标签（支持点击标题切换显示）</div>
             </el-form-item>
+            <el-form-item label="总条目限制">
+              <el-select v-model="currentEditingFolder.limitMode" placeholder="不限" style="width: 100%;">
+                <el-option label="不限" value=""></el-option>
+                <el-option label="按条数" value="count"></el-option>
+                <el-option label="按时间" value="time"></el-option>
+              </el-select>
+              <div class="tip">限制文件夹聚合后最终显示的总体条目数</div>
+            </el-form-item>
+            <el-form-item v-if="currentEditingFolder.limitMode === 'count'" label="显示条数">
+              <el-input-number v-model="currentEditingFolder.limitCount" :min="1" :max="1000"
+                style="width: 100%;"></el-input-number>
+              <div class="tip">仅保留最新的 N 条聚合结果</div>
+            </el-form-item>
+            <el-form-item v-if="currentEditingFolder.limitMode === 'time'" label="时间窗口">
+              <el-input-number v-model="currentEditingFolder.limitHours" :min="1" :max="720"
+                style="width: 100%;"></el-input-number>
+              <div class="tip">仅显示最近 N 小时内的条目</div>
+            </el-form-item>
           </el-form>
         </div>
         <template #footer>
@@ -3106,7 +3132,7 @@
               </el-card>
             </el-col>
             << end>>
-              <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="(feed, index) in filteredFeeds" :key="index"
+              <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="(feed, index) in filteredFeeds" :key="feed.link || index"
                 class="feed-col">
                 <el-card class="box-card" :body-style="{padding: '0 20px 12px 20px'}"
                   :header-style="{padding: '24px 20px 16px 20px'}">
@@ -3124,7 +3150,7 @@
                     </div>
                   </div>
                   <div class="scroll-container" @scroll="handleScroll">
-                    <el-list v-for="(item, i) in feed.items" :key="i">
+                    <el-list v-for="(item, i) in feed.items" :key="item.link || i">
                       <el-list-item>
                         <div class="list-item-title" :class="{ 'item-read': isRead(item.link) }"
                           @click="markAsRead(item.link)">
@@ -3211,6 +3237,7 @@
               apiKey: '',
               apiBase: '',
               model: '',
+              jsonMode: 'auto',
               systemPrompt: '',
               maxTokens: 500,
               temperature: 0.1,
@@ -3467,23 +3494,45 @@
             }
           }
         },
+        setSessionGroup(name, value) {
+          try {
+            sessionStorage.setItem(name, value);
+          } catch (e) { }
+        },
+        getSessionGroup(name) {
+          try {
+            return sessionStorage.getItem(name) || '';
+          } catch (e) { }
+          return '';
+        },
+        clearLegacyGroupCookie() {
+          try {
+            document.cookie = 'rss_current_group=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+          } catch (e) { }
+        },
+        resetVisibleFeedScrollPositions() {
+          this.$nextTick(() => {
+            const containers = document.querySelectorAll('.feed-col .scroll-container');
+            containers.forEach(container => {
+              container.scrollTop = 0;
+              container.classList.remove('scrolling');
+            });
+          });
+        },
         selectGroup(group) {
           this.currentGroup = group;
-          try {
-            localStorage.setItem('rss_current_group', group);
-          } catch (e) { }
+          this.setSessionGroup('rss_current_group', group);
           this.$nextTick(() => {
             const activeTab = document.querySelector('.group-tab.active');
             if (activeTab) {
               activeTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
             }
           });
+          this.resetVisibleFeedScrollPositions();
         },
         restoreCurrentGroup() {
-          try {
-            const saved = localStorage.getItem('rss_current_group');
-            if (saved) this.currentGroup = saved;
-          } catch (e) { }
+          const saved = this.getSessionGroup('rss_current_group');
+          if (saved) this.currentGroup = saved;
           this.ensureCurrentGroup();
         },
         ensureCurrentGroup() {
@@ -3494,9 +3543,7 @@
           if (!this.groups.includes(this.currentGroup)) {
             this.currentGroup = this.groups[0];
           }
-          try {
-            localStorage.setItem('rss_current_group', this.currentGroup);
-          } catch (e) { }
+          this.setSessionGroup('rss_current_group', this.currentGroup);
         },
         updateGroupsFromFeeds() {
           if (!this.feeds || this.feeds.length === 0) return;
@@ -3956,6 +4003,7 @@
                   apiKey: '',
                   apiBase: '',
                   model: '',
+                  jsonMode: 'auto',
                   systemPrompt: '',
                   maxDescLength: 2000,
                   batchSize: 5,
@@ -3965,6 +4013,7 @@
                   categoryPackages: []
                 };
               } else {
+                if (!this.config.aiClassify.jsonMode) this.config.aiClassify.jsonMode = 'auto';
                 if (this.config.aiClassify.maxTokens === undefined) this.config.aiClassify.maxTokens = 500;
                 if (this.config.aiClassify.temperature === undefined) this.config.aiClassify.temperature = 0.1;
                 if (this.config.aiClassify.batchSize === undefined) this.config.aiClassify.batchSize = 5;
@@ -4048,10 +4097,13 @@
                   apiKey: '',
                   apiBase: '',
                   model: '',
+                  jsonMode: 'auto',
                   systemPrompt: '',
                   maxDescLength: 2000,
                   categories: []
                 };
+              } else if (!this.config.aiClassify.jsonMode) {
+                this.config.aiClassify.jsonMode = 'auto';
               }
 
               // 初始化 schedules
@@ -4264,9 +4316,32 @@
           if (folder.showPubDate === undefined) folder.showPubDate = false;
           if (folder.showCategory === undefined) folder.showCategory = false;
           if (folder.showSource === undefined) folder.showSource = true;
+          if (folder.limitMode === undefined) folder.limitMode = '';
+          if (folder.limitCount === undefined) folder.limitCount = 0;
+          if (folder.limitHours === undefined) folder.limitHours = 24;
           this.showFolderSettingsModal = true;
         },
         saveFolderSettings() {
+          if (!this.currentEditingFolder) return;
+
+          if (this.currentEditingFolder.limitMode === 'count') {
+            if (!this.currentEditingFolder.limitCount || this.currentEditingFolder.limitCount <= 0) {
+              this.currentEditingFolder.limitMode = undefined;
+              this.currentEditingFolder.limitCount = undefined;
+            }
+            this.currentEditingFolder.limitHours = undefined;
+          } else if (this.currentEditingFolder.limitMode === 'time') {
+            if (!this.currentEditingFolder.limitHours || this.currentEditingFolder.limitHours <= 0) {
+              this.currentEditingFolder.limitMode = undefined;
+              this.currentEditingFolder.limitHours = undefined;
+            }
+            this.currentEditingFolder.limitCount = undefined;
+          } else {
+            this.currentEditingFolder.limitMode = undefined;
+            this.currentEditingFolder.limitCount = undefined;
+            this.currentEditingFolder.limitHours = undefined;
+          }
+
           this.showFolderSettingsModal = false;
         },
         // === 调度计划管理 ===
@@ -5101,7 +5176,8 @@
         // 应用本地展示配置
         this.applyFeedDisplayOverrides(this.feeds);
         this.updateGroupsFromFeeds();
-        // 恢复本地分组选中状态
+        // 清理旧 cookie，并恢复标签页级分组选中状态
+        this.clearLegacyGroupCookie();
         this.restoreCurrentGroup();
       },
       async mounted() {

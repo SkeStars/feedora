@@ -1,19 +1,19 @@
 package utils
 
 import (
-	"log"
-	"net/url"
 	"feedora/globals"
 	"feedora/models"
+	"log"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
 
 	"fmt"
-	"io"
-	"net/http"
 	"github.com/fsnotify/fsnotify"
 	"github.com/mmcdole/gofeed"
+	"io"
+	"net/http"
 	"sync"
 )
 
@@ -201,13 +201,125 @@ func GetCustomIconURL(rssURL string, customIcon string) string {
 func GetMaxFetchTime(items []models.Item) string {
 	maxTime := ""
 	for _, item := range items {
-		if item.FetchTime != "" {
-			if maxTime == "" || item.FetchTime > maxTime {
-				maxTime = item.FetchTime
-			}
+		if item.FetchTime != "" && compareTimestampStrings(item.FetchTime, maxTime) > 0 {
+			maxTime = item.FetchTime
 		}
 	}
 	return maxTime
+}
+
+func parseTimestamp(value string) (time.Time, bool) {
+	if value == "" {
+		return time.Time{}, false
+	}
+
+	layouts := []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02 15:04:05",
+		time.DateTime,
+	}
+
+	for _, layout := range layouts {
+		if parsed, err := time.Parse(layout, value); err == nil {
+			return parsed, true
+		}
+	}
+
+	return time.Time{}, false
+}
+
+func compareTimestampStrings(left, right string) int {
+	leftTime, leftOK := parseTimestamp(left)
+	rightTime, rightOK := parseTimestamp(right)
+
+	switch {
+	case leftOK && rightOK:
+		if leftTime.After(rightTime) {
+			return 1
+		}
+		if leftTime.Before(rightTime) {
+			return -1
+		}
+	case leftOK:
+		return 1
+	case rightOK:
+		return -1
+	}
+
+	if left > right {
+		return 1
+	}
+	if left < right {
+		return -1
+	}
+	return 0
+}
+
+func getItemSortTime(item models.Item) (time.Time, bool) {
+	if parsed, ok := parseTimestamp(item.PubDate); ok {
+		return parsed, true
+	}
+	if parsed, ok := parseTimestamp(item.FetchTime); ok {
+		return parsed, true
+	}
+	return time.Time{}, false
+}
+
+func compareItemsByRecency(left, right models.Item) int {
+	leftTime, leftOK := getItemSortTime(left)
+	rightTime, rightOK := getItemSortTime(right)
+
+	switch {
+	case leftOK && rightOK:
+		if leftTime.After(rightTime) {
+			return 1
+		}
+		if leftTime.Before(rightTime) {
+			return -1
+		}
+	case leftOK:
+		return 1
+	case rightOK:
+		return -1
+	}
+
+	if cmp := compareTimestampStrings(left.PubDate, right.PubDate); cmp != 0 {
+		return cmp
+	}
+	if cmp := compareTimestampStrings(left.FetchTime, right.FetchTime); cmp != 0 {
+		return cmp
+	}
+
+	return 0
+}
+
+func applyFolderItemLimit(folder models.Folder, items []models.Item) []models.Item {
+	switch folder.GetLimitMode() {
+	case "count":
+		limit := folder.GetLimitCount()
+		if limit > 0 && len(items) > limit {
+			return items[:limit]
+		}
+	case "time":
+		hours := folder.GetLimitHours()
+		if hours <= 0 {
+			return items
+		}
+
+		cutoff := time.Now().Add(-time.Duration(hours) * time.Hour)
+		filtered := make([]models.Item, 0, len(items))
+		for _, item := range items {
+			itemTime, ok := getItemSortTime(item)
+			if !ok || itemTime.Before(cutoff) {
+				continue
+			}
+			filtered = append(filtered, item)
+		}
+		return filtered
+	}
+
+	return items
 }
 
 // FetchAndCacheIcon 获取并缓存图标
@@ -504,10 +616,13 @@ func UpdateFeedWithOptions(url, formattedTime string, isManual bool, forceReproc
 	// 按时间戳降序排序（确保所有条目按时间排列，新条目自然排在最前）
 	// 当时间戳相同时，按原始索引升序排列，保持RSS源中的原始顺序
 	sort.SliceStable(allItems, func(i, j int) bool {
+		if cmp := compareItemsByRecency(allItems[i], allItems[j]); cmp != 0 {
+			return cmp > 0
+		}
 		if allItems[i].PubDate == allItems[j].PubDate {
 			return allItems[i].OriginalIndex < allItems[j].OriginalIndex
 		}
-		return allItems[i].PubDate > allItems[j].PubDate
+		return allItems[i].OriginalIndex < allItems[j].OriginalIndex
 	})
 
 	// 重新构建过滤后的列表，以反映排序变化
@@ -706,8 +821,8 @@ func mergeWithCachedItems(url string, newItems []models.Item, cacheItems int) []
 			Link:         item.Link,
 			OriginalLink: item.OriginalLink, // 保留原始链接用于后处理缓存查询
 			PubDate:      item.PubDate,
-			FetchTime:    item.FetchTime,   // 保留抓取时间
-			Category:     item.Category,    // 保留分类信息
+			FetchTime:    item.FetchTime, // 保留抓取时间
+			Category:     item.Category,  // 保留分类信息
 			// Description 和 Source 字段不保存到缓存
 		}
 	}
@@ -820,7 +935,7 @@ func buildSourceFeed(sourceURL string, groupName string) *models.Feed {
 
 	// 复制缓存以避免修改原始数据
 	result := cache
-	
+
 	// 支持自定义名称
 	if source.Name != "" {
 		result.Title = source.Name
@@ -867,12 +982,12 @@ func buildFolderFeed(folder models.Folder, groupName string) *models.Feed {
 	}
 
 	folderFeed := &models.Feed{
-		Title:       folder.Name,
-		Link:        "folder:" + folder.ID,
-		Icon:        icon,
-		IsFolder:    true,
-		Custom:      map[string]string{"lastupdate": "加载中"},
-		Items:       make([]models.Item, 0),
+		Title:        folder.Name,
+		Link:         "folder:" + folder.ID,
+		Icon:         icon,
+		IsFolder:     true,
+		Custom:       map[string]string{"lastupdate": "加载中"},
+		Items:        make([]models.Item, 0),
 		ShowPubDate:  folder.ShowPubDate,
 		ShowCategory: folder.ShowCategory,
 		ShowSource:   folder.ShowSource,
@@ -909,19 +1024,7 @@ func buildFolderFeed(folder models.Folder, groupName string) *models.Feed {
 
 	// 按发布时间倒序排列
 	sort.SliceStable(folderFeed.Items, func(i, j int) bool {
-		pubDateI := folderFeed.Items[i].PubDate
-		pubDateJ := folderFeed.Items[j].PubDate
-
-		if pubDateI == "" && pubDateJ == "" {
-			return false
-		}
-		if pubDateI == "" {
-			return false
-		}
-		if pubDateJ == "" {
-			return true
-		}
-		return pubDateI > pubDateJ
+		return compareItemsByRecency(folderFeed.Items[i], folderFeed.Items[j]) > 0
 	})
 
 	// 根据标题去重
@@ -939,6 +1042,7 @@ func buildFolderFeed(folder models.Folder, groupName string) *models.Feed {
 		}
 	}
 	folderFeed.Items = uniqueItems
+	folderFeed.Items = applyFolderItemLimit(folder, folderFeed.Items)
 
 	// 确定文件夹的最后更新时间（取所有条目中最新的抓取时间）
 	lastUpdate := GetMaxFetchTime(folderFeed.Items)
@@ -947,10 +1051,8 @@ func buildFolderFeed(folder models.Folder, groupName string) *models.Feed {
 	} else if len(folderFeed.Items) > 0 {
 		// 如果条目都没有抓取时间，回退到发布时间
 		for _, item := range folderFeed.Items {
-			if item.PubDate != "" {
-				if lastUpdate == "" || item.PubDate > lastUpdate {
-					lastUpdate = item.PubDate
-				}
+			if item.PubDate != "" && compareTimestampStrings(item.PubDate, lastUpdate) > 0 {
+				lastUpdate = item.PubDate
 			}
 		}
 		if lastUpdate != "" {
@@ -1022,7 +1124,7 @@ func addSourceItemsToFolder(folderFeed *models.Feed, sourceURL string, sourceNam
 		} else {
 			newItem.Source = ""
 		}
-		
+
 		folderFeed.Items = append(folderFeed.Items, newItem)
 	}
 }
@@ -1153,7 +1255,7 @@ func RefreshSingleFeed(link string) error {
 		}
 
 		log.Printf("[手动刷新] 刷新文件夹 [%s] 中的所有源", folder.Name)
-		
+
 		// 收集需要刷新的源URL
 		urlsToRefresh := make([]string, 0)
 		for _, entry := range folder.Entries {

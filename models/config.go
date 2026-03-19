@@ -49,6 +49,8 @@ type AIClassifyConfig struct {
 	APIBase string `json:"apiBase,omitempty"`
 	// 模型名称
 	Model string `json:"model,omitempty"`
+	// JSON 输出模式: auto / json_object / prompt_only
+	JSONMode string `json:"jsonMode,omitempty"`
 	// 系统提示词
 	SystemPrompt string `json:"systemPrompt,omitempty"`
 	// 最大 token 数
@@ -85,6 +87,16 @@ func (c AIClassifyConfig) GetModel() string {
 		return "doubao-seed-1.8"
 	}
 	return c.Model
+}
+
+// GetJSONMode 获取 JSON 输出模式，默认为 auto
+func (c AIClassifyConfig) GetJSONMode() string {
+	switch c.JSONMode {
+	case "json_object", "prompt_only", "auto":
+		return c.JSONMode
+	default:
+		return "auto"
+	}
 }
 
 // GetSystemPrompt 获取系统提示词
@@ -326,6 +338,38 @@ type Folder struct {
 	ShowCategory bool `json:"showCategory,omitempty"`
 	// 是否显示源名称标签
 	ShowSource bool `json:"showSource,omitempty"`
+	// 总条目限制模式: "count" / "time"
+	LimitMode string `json:"limitMode,omitempty"`
+	// 按条数限制时的总显示条目数
+	LimitCount int `json:"limitCount,omitempty"`
+	// 按时间限制时的时间窗口（小时）
+	LimitHours int `json:"limitHours,omitempty"`
+}
+
+// GetLimitMode 获取文件夹条目限制模式
+func (f Folder) GetLimitMode() string {
+	switch f.LimitMode {
+	case "count", "time":
+		return f.LimitMode
+	default:
+		return ""
+	}
+}
+
+// GetLimitCount 获取按条数限制时的条目数
+func (f Folder) GetLimitCount() int {
+	if f.LimitCount <= 0 {
+		return 0
+	}
+	return f.LimitCount
+}
+
+// GetLimitHours 获取按时间限制时的时间窗口（小时）
+func (f Folder) GetLimitHours() int {
+	if f.LimitHours <= 0 {
+		return 0
+	}
+	return f.LimitHours
 }
 
 // LayoutItem 布局项（可以是订阅源或文件夹）
@@ -434,7 +478,7 @@ func (c Config) GetAllAIClassifySources() []Source {
 // 返回所有 BoundCategories 中包含该分类包内类别的订阅源
 func (c Config) GetSourcesByPackageId(packageId string) []Source {
 	sources := make([]Source, 0)
-	
+
 	// 找到对应的分类包
 	var pkg *CategoryPackage
 	if c.AIClassify.CategoryPackages != nil {
@@ -445,17 +489,17 @@ func (c Config) GetSourcesByPackageId(packageId string) []Source {
 			}
 		}
 	}
-	
+
 	if pkg == nil || len(pkg.Categories) == 0 {
 		return sources
 	}
-	
+
 	// 获取该分类包的所有类别ID
 	categoryIds := make(map[string]bool)
 	for _, cat := range pkg.Categories {
 		categoryIds[cat.ID] = true
 	}
-	
+
 	// 查找所有 BoundCategories 中包含该分类包类别的源
 	for _, source := range c.Sources {
 		if !source.HasAIClassify() {
@@ -464,7 +508,7 @@ func (c Config) GetSourcesByPackageId(packageId string) []Source {
 		if source.Classify == nil || len(source.Classify.BoundCategories) == 0 {
 			continue
 		}
-		
+
 		// 检查源的 BoundCategories 是否与分类包的类别有交集
 		for _, catId := range source.Classify.BoundCategories {
 			if categoryIds[catId] {
@@ -473,7 +517,7 @@ func (c Config) GetSourcesByPackageId(packageId string) []Source {
 			}
 		}
 	}
-	
+
 	return sources
 }
 
